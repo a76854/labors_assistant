@@ -1,0 +1,86 @@
+/* ==============================
+   首页样式
+   ============================== */
+
+.home-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--navbar-height));
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.home-hero {
+  max-width: 600px;
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.home-icon {
+  font-size: 56px;
+  margin-bottom: 24px;
+  display: block;
+}
+
+.home-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+
+.home-subtitle {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 40px;
+  line-height: 1.7;
+}
+
+.home-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  width: 100%;
+  max-width: 540px;
+  margin-bottom: 40px;
+}
+
+.home-card {
+  padding: 20px 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-container);
+  backdrop-filter: var(--blur-light);
+  -webkit-backdrop-filter: var(--blur-light);
+  box-shadow: var(--shadow-border), var(--shadow-inset-highlight), var(--shadow-sm);
+  cursor: pointer;
+  transition: var(--transition-default);
+  text-align: center;
+}
+
+.home-card:hover {
+  background: var(--bg-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-border), var(--shadow-inset-highlight), var(--shadow-md);
+}
+
+.home-card:active {
+  transform: scale(0.97);
+}
+
+.home-card-icon {
+  font-size: 28px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.home-card-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.home-start-btn {
+  min-width: 200px;
+}

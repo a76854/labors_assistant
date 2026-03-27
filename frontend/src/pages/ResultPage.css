@@ -1,0 +1,49 @@
+/* ==============================
+   结果页样式
+   ============================== */
+
+.result-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--navbar-height));
+  padding: 48px 24px;
+}
+
+.result-placeholder {
+  text-align: center;
+  max-width: 480px;
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.result-placeholder-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 20px;
+}
+
+.result-placeholder-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.result-placeholder-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.7;
+}
+
+.result-doc-id {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-container);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-border);
+}
