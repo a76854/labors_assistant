@@ -75,10 +75,22 @@
   margin-bottom: 8px;
 }
 
+.home-card.selected {
+  background: var(--bg-hover);
+  box-shadow: 0 0 0 2px var(--color-primary), var(--shadow-lg);
+  transform: translateY(-2px);
+  border-radius: var(--radius-md);
+}
+.home-card.selected .home-card-label {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
 .home-card-label {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
+  transition: var(--transition-default);
 }
 
 .home-start-btn {

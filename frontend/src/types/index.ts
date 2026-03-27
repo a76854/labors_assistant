@@ -1,8 +1,37 @@
 /**
  * 全局 TypeScript 类型定义
- * 当前为空壳，后续按业务需求逐步补充
  */
 
-// TODO: 阶段 2 补充会话、消息相关类型
-// TODO: 阶段 3 补充文档相关类型
-export {};
+export type CaseType = 'wage_arrears' | 'labor_contract' | 'work_injury';
+
+export interface SessionCreateRequest {
+  case_type: CaseType;
+  description?: string;
+}
+
+export interface SessionResponse {
+  id: string;
+  case_type: string;
+  status: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageCreateRequest {
+  content: string;
+}
+
+export interface MessageResponse {
+  id: string;
+  session_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+export interface ChatHistoryResponse {
+  session_id: string;
+  messages: MessageResponse[];
+  total: number;
+}
