@@ -92,7 +92,7 @@ def calculate_injury_compensation(
 年均收入: ¥{avg_annual_income:,.2f}
 被扶养人: {num_dependents} 人
 
-【计算清单】
+
 1. 一次性伤残补助金
 2. 一次性工伤医疗补助金
 3. 一次性伤残就业补助金
