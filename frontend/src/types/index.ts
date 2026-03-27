@@ -35,3 +35,24 @@ export interface ChatHistoryResponse {
   messages: MessageResponse[];
   total: number;
 }
+
+export type DocumentStatus = 'pending' | 'generated' | 'exported';
+
+export interface DocumentGenerateRequest {
+  template_id: string;
+  format: 'docx' | 'pdf';
+}
+
+export interface DocumentResponse {
+  id: string;
+  session_id: string;
+  template_id: string;
+  title: string;
+  status: DocumentStatus;
+  content: string;
+  file_url?: string;
+  file_size?: number;
+  created_at: string;
+  updated_at: string;
+}
+

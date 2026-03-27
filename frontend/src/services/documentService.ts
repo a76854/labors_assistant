@@ -1,10 +1,14 @@
-/**
- * 文档相关 API 服务
- * - 文档生成
- * - 文档查询
- * - 文档导出下载
- * 当前为空壳，阶段 3 填充具体实现
- */
+import { get, post } from './request';
+import type { DocumentGenerateRequest, DocumentResponse } from '../types';
 
-// TODO: 阶段 3 实现文档生成和查询相关接口调用
-export {};
+export const generateDocument = async (sessionId: string, data: DocumentGenerateRequest): Promise<DocumentResponse> => {
+  return post<DocumentResponse>(`/api/v1/sessions/${sessionId}/generate-document`, data);
+};
+
+export const getDocument = async (docId: string): Promise<DocumentResponse> => {
+  return get<DocumentResponse>(`/api/v1/documents/${docId}`);
+};
+
+export const exportDocument = async (docId: string): Promise<{ message?: string }> => {
+  return get<{ message?: string }>(`/api/v1/documents/${docId}/export`);
+};

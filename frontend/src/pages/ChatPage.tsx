@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input, Button, message, Result, Spin } from 'antd';
-import { SendOutlined } from '@ant-design/icons';
+import { SendOutlined, FileTextOutlined } from '@ant-design/icons';
 import { getSession, getMessages, sendMessage } from '../services/chatService';
+import { generateDocument } from '../services/documentService';
 import type { SessionResponse, MessageResponse } from '../types';
 import { ApiError } from '../services/request';
 import './ChatPage.css';
@@ -19,6 +20,7 @@ export default function ChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +102,27 @@ export default function ChatPage() {
     }
   };
 
+  const handleGenerateDoc = async () => {
+    if (!sessionId || !session?.case_type) return;
+    setIsGeneratingDoc(true);
+    try {
+      const res = await generateDocument(sessionId, {
+        template_id: session.case_type,
+        format: 'docx'
+      });
+      message.success('文档生成请求已提交');
+      navigate(`/result/${res.id}`);
+    } catch (error: unknown) {
+      if (error instanceof ApiError) {
+        message.error(error.message);
+      } else {
+        message.error('生成诉状失败，请稍后重试');
+      }
+    } finally {
+      setIsGeneratingDoc(false);
+    }
+  };
+
   if (notFound) {
     return (
       <div className="page-container glass-card" style={{ marginTop: '10vh' }}>
@@ -130,12 +153,25 @@ export default function ChatPage() {
         
         {/* 顶部标题栏 */}
         <div className="chat-header">
-          <div className="chat-header-title">案件咨询</div>
-          {session?.case_type && (
-            <div className="chat-header-desc">
-              类型：{caseTypeMap[session.case_type] || session.case_type}
-            </div>
-          )}
+          <div className="chat-header-left" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="chat-header-title">案件咨询</div>
+            {session?.case_type && (
+              <div className="chat-header-desc">
+                类型：{caseTypeMap[session.case_type] || session.case_type}
+              </div>
+            )}
+          </div>
+          <div className="chat-header-right">
+            <Button
+              type="default"
+              icon={<FileTextOutlined />}
+              loading={isGeneratingDoc}
+              onClick={handleGenerateDoc}
+              disabled={isInitializing || !session}
+            >
+              生成诉状
+            </Button>
+          </div>
         </div>
 
         {/* 消息历史区域 */}
