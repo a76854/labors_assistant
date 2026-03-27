@@ -1,256 +1,267 @@
-# 劳动者维权AI助手 (labors_assistant)
+# 法律 AI Agent 系统（LangGraph ReAct）
 
-> 用AI技术帮助劳动者维权，一键生成高质量诉状，让法律援助不再是奢侈品。
+基于 LangGraph + LangChain 构建的法律咨询智能体，采用 ReAct 工作流：
+- 先通过对话收集四项诉讼要素
+- 再调用法律检索工具
+- 最后调用文书生成工具并输出结果
 
-## 📖 用户故事
-
-### 故事1：快速生成诉状
-**角色：** 拖欠工资的劳动者  
-**场景：** 小王在某互联网公司工作8个月，被拖欠4个月工资，想起诉公司。  
-**需求：** 通过简单的对话收集信息，系统自动生成一份格式正确、法律用语准确的诉状。  
-**验收标准：** 
-- 5轮以内的对话完成信息收集
-- 生成的诉状包含完整的"当事人""事实和理由""诉讼请求"
-- 诉状引用适用法律条款（《劳动法》《劳动合同法》等）
-- 导出PDF/Word格式可供法院提交
-
-### 故事2：多轮精化诉状
-**角色：** 需要补充细节的劳动者  
-**场景：** 首次对话后生成诉状，但发现细节不清楚，想修改并重新生成。  
-**需求：** 支持多轮对话补充/修改信息，系统更新诉状内容。  
-**验收标准：**
-- 用户可编辑已收集的信息字段
-- 修改后能快速重新生成诉状（<10s）
-- 诉状版本有清晰的变更记录
-
-### 故事3：参考相似案例
-**角色：** 想了解法律胜诉可能性的劳动者  
-**场景：** 想知道"拖欠工资"案件通常的判决结果和赔偿标准。  
-**需求：** 系统自动检索相似的历史案例和适用法规条款，展示给用户参考。  
-**验收标准：**
-- 能从赛方法律API检索相似案例（2-3个）
-- 展示案例的当事人、判决结果、法律依据
-- 用户可点击"应用此案例"快速填充信息
-
-### 故事4：下载和编辑诉状
-**角色：** 准备提交法院的劳动者  
-**场景：** 诉状生成后，想以Word格式下载，在律师帮助下做最后调整，然后打印提交法院。  
-**需求：** 支持Word (.docx) 和PDF格式导出，用户可在Word中编辑。  
-**验收标准：**
-- 导出的Word格式排版规范，可被法院系统识别
-- 所有法律术语和计算结果正确
-- 用户可在Word中编辑，格式不破坏
+当前代码已支持 OpenAI 兼容接口，可直接使用阿里 DashScope（OpenAI 兼容模式）。
 
 ---
 
-## 🎯 核心功能
+## 1. 当前实现状态
 
-### P0 MVP必须
-| 功能 | 说明 | 负责人 | 截止日期 |
-|------|------|-------|---------|
-| **多轮对话** | AI助手通过交互式对话收集诉讼信息 | 前端 + Agent | 4月10日 |
-| **意图识别** | 自动识别纠纷类型（拖欠工资/劳动合同纠纷/工伤赔偿） | Agent | 4月10日 |
-| **要素提取** | 智能提取当事人、事实、法律要素 | Agent | 4月10日 |
-| **法律分析** | 检索赛方API的适用法条和相似案例 | Agent | 4月10日 |
-| **诉状生成** | 格式规范、法律用语准确的诉状 | 文档系统 | 4月13日 |
-| **多格式导出** | 支持Word (.docx) 和PDF格式下载 | 文档系统 + 后端 | 4月13日 |
+### 已实现
+- ReAct 工作流编排（`StateGraph` + `ToolNode` + 条件路由）
+- 两个核心工具：
+  - `search_law_tool`（法律检索，当前为 mock 返回）
+  - `generate_doc_tool`（文书生成，当前为 mock 返回）
+- 工作流包装接口：
+  - `LegalAgentWorkflow.run()`
+  - `LegalAgentWorkflow.stream()`
+  - `get_legal_agent_workflow()`
+  - `execute_legal_query()`
+- 动态去重策略：防止重复调用 `search_law_tool`
+- `main.py` 菜单示例可直接运行
 
-### P1 如时间允许
-| 功能 | 说明 | 负责人 | 截止日期 |
-|------|------|-------|---------|
-| **会话管理** | 用户保存对话历史，多次编辑和重新生成 | 后端 | 4月18日 |
-| **案例查询** | 检索相似案例，参考判决结构 | Agent | 4月18日 |
-| **用户账户** | 简单的用户注册和登录 | 后端 | 4月18日 |
-
----
-
-## 系统架构
-
-![系统架构](img/architecture.png)
-
-## 👥 团队分工
-
-|业务|核心任务|框架|交付物|
-|:--:|--|--|--|
-|后端|FastAPI架构、数据库、接口设计| FastAPI主框架、数据库、会话管理、API文档 | API Swagger文档、单元测试 |
-|agent|LangGraph工作流、LLM调优、Prompt、RAG接入| LangGraph工作流、Prompt编写、RAG集成 | 工作流验收文档、Prompt库 |
-|前端|React界面、对话组件、文件下载| React项目、对话UI、表单、集成后端 | UI原型、功能演示 |
-|文档系统|Word模板、python-docx、格式渲染| 诉讼模板设计、python-docx、质量验证 | 3+诉状模板、导出样本 |
-|测试运维|测试用例、部署、文档、辅助开发| CI/CD、集成测试、部署、演示 | 测试报告、部署指南、Demo视频 |
-
-**协作规则**：
-- 代码审查：每个PR需1名不同模块评审人
-- 周会讨论：每周一次集成进度检查
-- 文档同步：模块间接口文档保持最新
+### 未实现（后续）
+- 真实法律知识库/RAG 检索
+- 真实文书文件生成与存储（当前返回 mock 链接）
+- `calculator.py` 工具接入主流程（目前存在但未绑定到 `tools_list`）
 
 ---
 
-## 📅 开发里程碑
+## 2. 项目结构（与当前代码一致）
 
-| 时间 | 里程碑 | 验收标准 |
-|------|------|--------|
-| **3月30日** | ✅ API设计冻结 | 所有接口清晰定义，无歧义 |
-| **4月6日** | ✅ 端到端可跑通 | 用mock数据完整跑通全链路 |
-| **4月10日** | ✅ Alpha版本 | 接入赛方API，生成3个真实样例 |
-| **4月13日** | ✅ Beta版本 | 完整UI、无critical bug |
-| **4月18日** | 🚀 **最终提交** | 源代码 + 演示视频 + 部署指南 |
-
----
-
-## 💻 技术栈
-
-| 模块 | 技术选择 | 版本/说明 |
-|------|--------|----------|
-| **后端API** | FastAPI | >=0.100 (异步、自动文档) |
-| **ORM** | SQLAlchemy | >=2.0 (异步支持) |
-| **数据库** | SQLite/PostgreSQL | 开发SQLite，生产Postgres |
-| **AI工作流** | LangGraph | >=0.1.x (状态机、编排) |
-| **LLM调用** | LangChain | >=0.1.x (模型适配) |
-| **前端框架** | React + TypeScript | ^18.0 |
-| **UI组件** | Ant Design | >=5.0 |
-| **文档处理** | python-docx | >=0.8.11 |
-| **测试框架** | pytest | >=7.0 |
-| **CI/CD** | GitHub Actions | 自动化集成测试 |
-
----
-
-## 🚀 快速启动
-
-### 前置条件
-```
-Python 3.10+  |  Node 18+  |  Git
-```
-
-### 环境搭建
-
-**1. 克隆仓库**
-```bash
-git clone https://github.com/labors-assistant/labors_assistant.git
-cd labors_assistant
-```
-
-**2. 后端启动**
-```bash
-python -m venv venv
-source venv/bin/activate
-
-pip install -r requirements-backend.txt
-cp .env.example .env          # 编辑.env，填入赛方API密钥
-python scripts/init_db.py
-
-# 启动FastAPI (http://localhost:8000)
-uvicorn backend.main:app --reload
-# API文档: http://localhost:8000/docs
-```
-
-**3. 前端启动**
-```bash
-cd frontend
-npm install
-npm run dev  # http://localhost:3000
-```
-
-**4. 验证系统**
-```bash
-curl http://localhost:8000/api/health
-# 浏览 http://localhost:3000
-```
-
-### 运行测试
-```bash
-pytest tests/unit/ -v           # 后端单元测试
-pytest tests/integration/ -v    # 集成测试
-cd frontend && npm test         # 前端测试
-```
-
-### 部署到云环境
-```bash
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d
-docker logs -f labors-backend
-```
-
----
-
-## 📁 项目结构
-
-```
-labors_assistant/
-├── README.md
-├── LICENSE
-├── requirements-backend.txt
-├── .env.example
-│
-├── backend/                 # FastAPI业务服务
-│   ├── main.py
-│   ├── api/routes.py, schema.py
-│   ├── services/chat.py, document.py, agent.py
-│   ├── db/models.py, database.py
-│   └── config.py
-│
-├── agent/                   # LangGraph AI工作流
-│   ├── workflow.py
+```text
+LLM-laws/
+├── agent/
+│   ├── __init__.py
+│   ├── state.py
 │   ├── prompts.py
-│   ├── nodes/intent.py, collection.py, extraction.py, analysis.py
-│   └── rag/legal_search.py
-│
-├── frontend/                # React前端
-│   ├── src/pages/ChatPage.tsx, PreviewPage.tsx, ResultPage.tsx
-│   ├── src/components/ChatBox.tsx, FormBuilder.tsx, DocPreview.tsx
-│   ├── src/services/api.ts
-│   └── package.json
-│
-├── docs/                    # 文档和模板
-│   ├── templates/labor_dispute.docx, wage_arrears.docx, work_injury.docx
-│   ├── API.md, ARCHITECTURE.md, CONTRIBUTION.md
-│
-├── tests/                   # 测试用例
-│   ├── unit/test_api.py, test_services.py, test_workflow.py
-│   ├── integration/test_end2end.py, test_document_generation.py
-│   └── fixtures/chat_history.json, legal_case.json
-│
-└── deployment/              # 部署配置
-    ├── Dockerfile, docker-compose.yml
-    └── scripts/init_db.py, seed_templates.py
+│   ├── agent_node.py
+│   ├── workflow.py
+│   └── tools/
+│       ├── __init__.py
+│       ├── legal_search.py
+│       ├── doc_generator.py
+│       └── calculator.py
+├── main.py
+├── requirements.txt
+├── .env
+└── README.md
 ```
 
 ---
 
-## 🔄 Git工作流
+## 3. 核心流程
 
-### 分支策略
-```
-main (稳定发布) ← dev (开发主分支) ← feature/{模块}/{功能}
-```
+### 3.1 State
+`AgentState` 仅包含：
+- `messages`: 对话消息（使用 `add_messages` reducer）
+- `extracted_info`: 案情要素缓存字典
 
-### 创建特性分支
+`LawsuitElementsSchema` 定义文书生成所需四要素：
+- `plaintiff`
+- `defendant`
+- `claim`
+- `amount`
+
+### 3.2 Prompt 约束
+`SYSTEM_PROMPT` 强制两阶段：
+1. 收集四要素（禁止工具调用）
+2. 信息齐全后按顺序调用：
+   - `search_law_tool`
+   - `generate_doc_tool`
+
+### 3.3 Graph 编排
+`workflow.py` 里的图结构：
+`START -> agent -> (tools_condition) -> tools -> agent -> ... -> END`
+
+### 3.4 防重复工具调用（已启用）
+在 `call_agent` 中增加动态系统约束：
+- 若已调用过 `search_law_tool` 且未调用 `generate_doc_tool`：
+  - 禁止再次调用 `search_law_tool`
+  - 强制下一步调用 `generate_doc_tool`
+- 若两个工具都已调用：
+  - 禁止继续调用工具
+  - 直接输出最终答案
+
+期望顺序：
+1. `search_law_tool`
+2. `generate_doc_tool`
+3. 最终答复
+
+---
+
+## 4. 环境准备
+
+## 4.1 安装依赖
+
 ```bash
-git checkout -b feature/backend/session-management dev
-git checkout -b feature/agent/intent-classification dev
-git checkout -b feature/frontend/chat-ui dev
+pip install -r requirements.txt
 ```
 
-### Commit规范
-```
-<type>(<scope>): <subject>
+中国网络可使用镜像：
 
-<body>
-<footer>
+```bash
+pip install -r requirements.txt -i https://pypi.tsinghua.edu.cn/simple
 ```
 
-**类型定义**：`feat` | `fix` | `refactor` | `test` | `docs` | `chore`
+推荐使用项目虚拟环境执行：
+
+```bash
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+## 4.2 配置模型环境变量
+
+项目通过 `python-dotenv` 读取根目录 `.env`。
+
+推荐使用统一变量（当前代码优先读取 `LLM_*`，兼容 `OPENAI_*`）：
+
+```env
+LLM_MODEL=qwen-plus
+LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+LLM_API_KEY=你的有效Key
+
+# 兼容旧变量（可选）
+# OPENAI_API_KEY=
+# OPENAI_BASE_URL=
+```
+
+`agent_node.py` 的读取优先级：
+- `api_key`: `LLM_API_KEY` -> `OPENAI_API_KEY`
+- `base_url`: `LLM_BASE_URL` -> `OPENAI_BASE_URL`
+- `model`: `LLM_MODEL`（默认 `qwen-plus`）
 
 ---
 
-## 🧪 质量标准
+## 5. 运行方式
 
-### 性能基准
-```
-API响应 (非LLM):  <100ms
-前端加载:         <3s
-诉状导出:         <5s
-RAG检索:          <2s
+### 5.1 菜单演示
+
+```bash
+.\.venv\Scripts\python.exe main.py
 ```
 
-### 代码覆盖率
-- 后端：>=70%  |  前端：>=50%  |  Agent：>=60%
+### 5.2 直接执行单条查询
+
+```python
+from agent.workflow import execute_legal_query
+
+result = execute_legal_query(
+    user_query="公司拖欠工资15000元，我该怎么办？",
+    max_iterations=10,
+    verbose=False,
+)
+
+print(result["final_answer"])
+print(result["tools_used"])
+print(result["reasoning_steps"])
+print(result["generated_document"])
+```
+
+### 5.3 使用工作流对象
+
+```python
+from agent.workflow import get_legal_agent_workflow
+
+workflow = get_legal_agent_workflow()
+
+result = workflow.run("你的法律问题", max_iterations=10)
+
+for event in workflow.stream("你的法律问题", max_iterations=10):
+    print(event)
+```
+
+### 5.4 终端交互式图调试（workflow 直跑）
+
+```bash
+.\.venv\Scripts\python.exe agent\workflow.py
+```
+
+会在终端输出：
+- Agent 思考
+- 工具调用输入
+- 工具结果预览
+- 最终回复
+
+---
+
+## 6. 返回结构说明
+
+`execute_legal_query()` / `LegalAgentWorkflow.run()` 返回：
+
+```python
+{
+  "final_answer": str,
+  "tools_used": list[str],
+  "reasoning_steps": list[str],
+  "generated_document": str | None,
+}
+```
+
+说明：
+- `tools_used` 会做去重（保留首次出现顺序）
+- `generated_document` 当前通过检测工具消息中 `http` + `.docx` 提取
+
+---
+
+## 7. 工具模块说明
+
+### 已接入主流程
+- `agent/tools/legal_search.py` -> `search_law_tool`
+- `agent/tools/doc_generator.py` -> `generate_doc_tool`
+
+### 暂未接入主流程
+- `agent/tools/calculator.py`
+  - `calculate_compensation`
+  - `calculate_injury_compensation`
+  - `calculate_wage_compensation`
+
+如需启用赔偿计算，需要把对应工具加入 `agent/agent_node.py` 中的 `tools_list`。
+
+---
+
+## 8. 常见问题
+
+### Q1: 401 / invalid_api_key
+- 检查 `.env` 中的 `LLM_API_KEY`
+- 确认 `LLM_BASE_URL` 与服务商匹配
+- 修改 `.env` 后重开终端再运行
+
+### Q2: 提示 `.env` 注入未开启
+在 `.vscode/settings.json` 中确认：
+
+```json
+{
+  "python.terminal.useEnvFile": true,
+  "python.envFile": "${workspaceFolder}/.env"
+}
+```
+
+### Q3: 为什么不调用工具
+如果四要素不完整，系统会持续追问，不会调用工具（这是 prompt 规则）。
+
+---
+
+## 9. 安全建议
+
+- 不要把真实 API Key 提交到 Git 仓库
+- 建议将 `.env` 加入 `.gitignore`
+- 如果 Key 曾明文暴露，请立即在平台侧轮换
+
+---
+
+## 10. 版本与依赖
+
+核心依赖见 `requirements.txt`：
+- `langgraph>=0.1.0`
+- `langchain>=0.1.0`
+- `langchain-openai>=0.0.1`
+- `openai>=1.0.0`
+- `pydantic>=2.0.0`
+- `python-dotenv>=1.0.0`
+
+当前文档与现有代码实现对齐于本仓库当前版本。

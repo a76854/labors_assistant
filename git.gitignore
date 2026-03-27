@@ -1,0 +1,15 @@
+# 忽略 Python 缓存
+__pycache__/
+*.pyc
+agent/__pycache__/
+agent/tools/__pycache__/
+
+# 忽略环境文件（内含 API Key）
+.env
+.venv/
+
+# 忽略生成的文档
+generated_docs/*.docx
+
+# 忽略编辑器设置
+.vscode/
