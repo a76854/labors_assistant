@@ -1,4 +1,4 @@
-from typing import Annotated, TypedDict
+from typing import Annotated, NotRequired, TypedDict
 
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
@@ -8,7 +8,10 @@ class AgentState(TypedDict):
     """Agent 执行过程中的状态容器。"""
 
     messages: Annotated[list, add_messages]
-    extracted_info: dict
+    # Token优化与记忆模块：白板记忆，缓存已收集案件要素（缺省按空字典处理）。
+    extracted_elements: NotRequired[dict]
+    # 兼容历史字段，后续可逐步迁移到 extracted_elements。
+    extracted_info: NotRequired[dict]
 
 
 class LawsuitElementsSchema(BaseModel):

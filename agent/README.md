@@ -33,33 +33,33 @@
 
 在仓库根目录执行：
 
-	cd E:\LLM-laws
+    cd E:\LLM-laws
 
 ### 3.1 激活虚拟环境
 
-	.\.venv\Scripts\Activate.ps1
+    .\.venv\Scripts\Activate.ps1
 
 若未创建虚拟环境，可先执行：
 
-	python -m venv .venv
+    python -m venv .venv
 	.\.venv\Scripts\Activate.ps1
 
 ### 3.2 安装依赖
 
-	pip install -r requirements.txt
+    pip install -r requirements.txt
 	pip install python-docx
 
 ### 3.3 配置环境变量
 
 编辑根目录 .env，最少需要：
 
-	LLM_MODEL=qwen-plus
+    LLM_MODEL=qwen-plus
 	LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 	LLM_API_KEY=你的模型APIKey
 
 如需启用私域检索，再增加：
 
-	YUANQI_API_URL=你的私域检索接口URL
+    YUANQI_API_URL=你的私域检索接口URL
 	YUANQI_API_KEY=你的私域检索接口Key
 
 ---
@@ -68,13 +68,13 @@
 
 ### 4.1 交互式测试（推荐）
 
-	python -m agent.workflow
+    python -m agent.workflow
 
 启动后可在终端持续输入案情，按 Ctrl+C 退出。
 
 ### 4.2 程序化单次测试
 
-	python -c "from agent.workflow import execute_legal_query; r=execute_legal_query('你的测试请求', max_iterations=30); print(r)"
+    python -c "from agent.workflow import execute_legal_query; r=execute_legal_query('你的测试请求', max_iterations=30); print(r)"
 
 ---
 
@@ -84,7 +84,7 @@
 
 输入示例：
 
-	我想起诉别人还钱。
+    我想起诉别人还钱。
 
 预期：
 
@@ -95,7 +95,7 @@
 
 输入示例：
 
-	原告：张三，身份证号110101199001011234，手机号13800138000，住深圳市南山区科技园科苑路15号。
+    原告：张三，身份证号110101199001011234，手机号13800138000，住深圳市南山区科技园科苑路15号。
 	被告：李四，身份证号110101198501015678，手机号13900139000，住深圳市福田区福华路88号。
 	核心诉求：请求被告返还借款本金80000元，并按年利率8%支付逾期利息。
 	涉案金额：80000元。
@@ -112,7 +112,7 @@
 
 输入示例：
 
-	原告：王五，身份证号110101199102023333，手机号13900001111。
+    原告：王五，身份证号110101199102023333，手机号13900001111。
 	被告：赵六，身份证号110101198706067777，住深圳市南山区某街道某号。
 	核心诉求：返还借款120000元及逾期利息。
 	涉案金额：120000元。
@@ -169,12 +169,12 @@
 - 建议把 .env 仅保留在本地，并维护 .env.example 作为团队模板。
 - 每次提交前运行：
 
-	python -m py_compile agent/__init__.py agent/agent_node.py agent/prompts.py agent/state.py agent/workflow.py agent/tools/__init__.py agent/tools/calculator.py agent/tools/doc_generator.py agent/tools/legal_search.py
+  python -m py_compile agent/__init__.py agent/agent_node.py agent/prompts.py agent/state.py agent/workflow.py agent/tools/__init__.py agent/tools/calculator.py agent/tools/doc_generator.py agent/tools/legal_search.py
 
 ---
 
 ## 9. 快速验收命令（复制即用）
 
-	python -c "from agent.workflow import execute_legal_query; q='原告：张三，身份证号110101199001011234，手机号13800138000，住深圳市南山区科技园科苑路15号。被告：李四，身份证号110101198501015678，手机号13900139000，住深圳市福田区福华路88号。核心诉求：请求返还借款本金80000元并支付逾期利息。涉案金额：80000元。补充事实：2025年6月1日转账借款，约定2025年9月1日前还款，现逾期未还；有借条、转账记录、催款聊天记录。请完成检索、输出评估并生成文书。'; r=execute_legal_query(q, max_iterations=30); print('TOOLS_USED=', r.get('tools_used')); print('GENERATED_DOCUMENT=', r.get('generated_document'))"
+    python -c "from agent.workflow import execute_legal_query; q='原告：张三，身份证号110101199001011234，手机号13800138000，住深圳市南山区科技园科苑路15号。被告：李四，身份证号110101198501015678，手机号13900139000，住深圳市福田区福华路88号。核心诉求：请求返还借款本金80000元并支付逾期利息。涉案金额：80000元。补充事实：2025年6月1日转账借款，约定2025年9月1日前还款，现逾期未还；有借条、转账记录、催款聊天记录。请完成检索、输出评估并生成文书。'; r=execute_legal_query(q, max_iterations=30); print('TOOLS_USED=', r.get('tools_used')); print('GENERATED_DOCUMENT=', r.get('generated_document'))"
 
 若输出中包含 generate_legal_doc_tool 且 GENERATED_DOCUMENT 非空，即通过。

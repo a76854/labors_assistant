@@ -17,6 +17,25 @@ from langchain_core.messages import SystemMessage
 load_dotenv()
 
 
+DEBUG_THINKING = os.getenv("DEBUG_THINKING", "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+# Token优化与记忆模块：滑动窗口消息裁剪，仅保留最近若干轮对话。
+TRIM_WINDOW_SIZE = 6
+
+
+def _trim_recent_history(messages: list, window_size: int) -> list:
+    """裁剪历史消息并避免以 tool 消息开头导致协议错误。"""
+    recent = messages[-window_size:]
+    while recent and hasattr(recent[0], "tool_call_id"):
+        recent = recent[1:]
+    return recent
+
+
 tools_list = [
     search_public_laws_tool,
     search_public_cases_tool,
@@ -42,9 +61,7 @@ llm_with_tools = llm.bind_tools(tools_list)
 
 
 def call_agent(state: AgentState) -> dict:
-    """主节点：组装约束后调用 LLM，并返回单条响应消息。"""
-
-    system_message = SystemMessage(content=SYSTEM_PROMPT)
+    whiteboard_elements = state.get("extracted_elements", {})
 
     public_laws_call_count = 0
     public_cases_call_count = 0
@@ -133,9 +150,33 @@ def call_agent(state: AgentState) -> dict:
         )
     )
 
-    dynamic_message = SystemMessage(content="\n".join(dynamic_rules)) if dynamic_rules else None
+    debug_instruction = ""
+    if DEBUG_THINKING:
+        debug_instruction = (
+            "调试模式已开启。"
+            "当且仅当你本轮不调用任何工具、需要直接回复用户时，"
+            "请使用以下结构输出，且不要暴露完整内部推理链：\n"
+            "【思考摘要】\n"
+            "- 信息完整性：一句话\n"
+            "- 工具决策：一句话（说明是否调用及原因）\n"
+            "- 下一步：一句话\n"
+            "【正式答复】\n"
+            "<给用户的正式答复>\n"
+            "若本轮需要调用工具，则不要输出思考摘要，直接进行工具调用。"
+        )
 
-    messages_with_system = [system_message] + ([dynamic_message] if dynamic_message else []) + state["messages"]
+    system_sections = [
+        SYSTEM_PROMPT,
+        f"当前白板上已记录的要素为：{whiteboard_elements}",
+    ]
+    if dynamic_rules:
+        system_sections.append("动态约束：\n" + "\n".join(dynamic_rules))
+    if debug_instruction:
+        system_sections.append(debug_instruction)
+
+    system_message = SystemMessage(content="\n\n".join(system_sections))
+    recent_history = _trim_recent_history(state["messages"], TRIM_WINDOW_SIZE)
+    messages_with_system = [system_message] + recent_history
 
     response = llm_with_tools.invoke(messages_with_system)
 
@@ -152,7 +193,34 @@ def call_agent(state: AgentState) -> dict:
                     "严禁再次调用任何 search_* 检索工具。"
                 )
             )
-            forced_messages = [system_message] + ([dynamic_message] if dynamic_message else []) + [forced_rule] + state["messages"]
+            forced_system_sections = system_sections + [forced_rule.content]
+            forced_system_message = SystemMessage(content="\n\n".join(forced_system_sections))
+            forced_messages = [forced_system_message] + recent_history
             response = llm_with_tools.invoke(forced_messages)
+
+    if (
+        DEBUG_THINKING
+        and not (hasattr(response, "tool_calls") and response.tool_calls)
+        and isinstance(getattr(response, "content", None), str)
+    ):
+        content = response.content.strip()
+        if "【思考摘要】" not in content or "【正式答复】" not in content:
+            if public_laws_call_count == 0 and public_cases_call_count == 0 and private_knowledge_call_count == 0:
+                completeness_text = "关键信息尚未收集完整（未进入检索阶段）"
+                decision_text = "不调用工具，先继续补齐案件要素"
+                next_step_text = "继续向用户追问缺失要素（原告、被告、诉求、金额）"
+            else:
+                completeness_text = "基础信息已部分具备（已进入检索/分析流程）"
+                decision_text = "根据当前状态决定是否调用下一工具或收口"
+                next_step_text = "结合既有工具结果继续输出或进入文书生成"
+
+            response.content = (
+                "【思考摘要】\n"
+                f"- 信息完整性：{completeness_text}\n"
+                f"- 工具决策：{decision_text}\n"
+                f"- 下一步：{next_step_text}\n\n"
+                "【正式答复】\n"
+                f"{content}"
+            )
 
     return {"messages": [response]}
