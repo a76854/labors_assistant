@@ -1,5 +1,6 @@
 import os
 import re
+from typing import Dict
 
 from agent.state import AgentState
 from agent.prompts import SYSTEM_PROMPT
@@ -36,6 +37,56 @@ def _trim_recent_history(messages: list, window_size: int) -> list:
     return recent
 
 
+def _extract_elements_from_text(text: str) -> Dict[str, str]:
+    """从用户文本中提取诉讼要素（增量更新）。"""
+    extracted: Dict[str, str] = {}
+    if not isinstance(text, str):
+        return extracted
+
+    compact = text.replace("\n", " ")
+    patterns = {
+        "plaintiff": [r"原告[：:]\s*([^；;。]+)", r"我叫\s*([^，,。；;]+)"],
+        "defendant": [r"被告[：:]\s*([^；;。]+)"],
+        "claim": [r"核心诉求[：:]\s*([^。\n]+)", r"诉求[是为：:]\s*([^。\n]+)"],
+        "amount": [r"涉案金额[：:]\s*([0-9０-９,，.．]+\s*元?)", r"本金\s*([0-9０-９,，.．]+\s*元?)"],
+    }
+
+    for key, regex_list in patterns.items():
+        for pattern in regex_list:
+            match = re.search(pattern, compact)
+            if match:
+                value = match.group(1).strip()
+                if value:
+                    extracted[key] = value
+                    break
+
+    return extracted
+
+
+def _build_whiteboard(state: AgentState) -> Dict[str, str]:
+    """构建白板记忆：历史白板 + 兼容旧字段 + 最新用户输入增量提取。"""
+    whiteboard: Dict[str, str] = {}
+
+    base_elements = state.get("extracted_elements", {})
+    if isinstance(base_elements, dict):
+        whiteboard.update({k: str(v) for k, v in base_elements.items() if v})
+
+    legacy_elements = state.get("extracted_info", {})
+    if isinstance(legacy_elements, dict):
+        for key, value in legacy_elements.items():
+            if value and key not in whiteboard:
+                whiteboard[key] = str(value)
+
+    for message in state.get("messages", []):
+        if message.__class__.__name__ != "HumanMessage":
+            continue
+        text = getattr(message, "content", "")
+        updates = _extract_elements_from_text(text)
+        whiteboard.update(updates)
+
+    return whiteboard
+
+
 tools_list = [
     search_public_laws_tool,
     search_public_cases_tool,
@@ -61,7 +112,7 @@ llm_with_tools = llm.bind_tools(tools_list)
 
 
 def call_agent(state: AgentState) -> dict:
-    whiteboard_elements = state.get("extracted_elements", {})
+    whiteboard_elements = _build_whiteboard(state)
 
     public_laws_call_count = 0
     public_cases_call_count = 0
@@ -223,4 +274,7 @@ def call_agent(state: AgentState) -> dict:
                 f"{content}"
             )
 
-    return {"messages": [response]}
+    return {
+        "messages": [response],
+        "extracted_elements": whiteboard_elements,
+    }

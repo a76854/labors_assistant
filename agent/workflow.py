@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -42,22 +43,41 @@ def build_workflow():
 app = build_workflow()
 
 
+# FastAPI 对接入口：统一封装 LangGraph 调用，外部只需传入 user_input 与 thread_id。
+def run_agent(user_input: str, thread_id: str):
+    config = {"configurable": {"thread_id": thread_id}}
+    final_state = {}
+    for state in app.stream(
+        {"messages": [("user", user_input)]},
+        config=config,
+        stream_mode="values",
+    ):
+        if isinstance(state, dict):
+            final_state = state
+    return final_state
+
+
 class LegalAgentWorkflow:
     """法律 Agent 工作流包装器。"""
 
     def __init__(self):
         self.app = app
 
-    def run(self, user_query: str, max_iterations: int = 10, verbose: bool = False) -> dict:
+    def run(
+        self,
+        user_query: str,
+        thread_id: str = "default",
+        max_iterations: int = 10,
+        verbose: bool = False,
+    ) -> dict:
         initial_state = {
             "messages": [HumanMessage(content=user_query)],
-            "extracted_elements": {},
         }
         result = self.app.invoke(
             initial_state,
             config={
                 "recursion_limit": max_iterations,
-                "configurable": {"thread_id": "test_user_001"},
+                "configurable": {"thread_id": thread_id},
             },
         )
 
@@ -91,16 +111,15 @@ class LegalAgentWorkflow:
             "generated_document": generated_document,
         }
 
-    def stream(self, user_query: str, max_iterations: int = 10):
+    def stream(self, user_query: str, thread_id: str = "default", max_iterations: int = 10):
         initial_state = {
             "messages": [HumanMessage(content=user_query)],
-            "extracted_elements": {},
         }
         yield from self.app.stream(
             initial_state,
             config={
                 "recursion_limit": max_iterations,
-                "configurable": {"thread_id": "test_user_001"},
+                "configurable": {"thread_id": thread_id},
             },
         )
 
@@ -110,10 +129,20 @@ def get_legal_agent_workflow() -> LegalAgentWorkflow:
     return LegalAgentWorkflow()
 
 
-def execute_legal_query(user_query: str, max_iterations: int = 10, verbose: bool = False) -> dict:
+def execute_legal_query(
+    user_query: str,
+    thread_id: str = "default",
+    max_iterations: int = 10,
+    verbose: bool = False,
+) -> dict:
     """快捷函数：执行一次法律查询并返回结果。"""
     workflow = get_legal_agent_workflow()
-    return workflow.run(user_query=user_query, max_iterations=max_iterations, verbose=verbose)
+    return workflow.run(
+        user_query=user_query,
+        thread_id=thread_id,
+        max_iterations=max_iterations,
+        verbose=verbose,
+    )
 
 
 def _split_debug_sections(content: str) -> tuple[str, str]:
@@ -151,18 +180,11 @@ if __name__ == "__main__":
     print("\n" + "═" * 70)
     print("  法律 AI Agent - 终端交互测试")
     print("═" * 70)
-    print("\n输入您的法律问题或案情描述（按 Ctrl+C 退出）\n")
+    print("\n输入您的法律问题或案情描述\n")
 
-    conversation_messages = []
-    extracted_elements = {}
-    seen_message_keys = set()
-
-    def append_unique_message(message):
-        key = _message_fingerprint(message)
-        if key in seen_message_keys:
-            return
-        seen_message_keys.add(key)
-        conversation_messages.append(message)
+    # 默认自动生成会话 ID，启动后无需额外回车确认。
+    current_thread_id = str(uuid.uuid4())
+    print(f"已自动生成会话 ID: {current_thread_id}\n")
 
     while True:
         try:
@@ -170,85 +192,39 @@ if __name__ == "__main__":
             if not user_input:
                 continue
 
-            human_message = HumanMessage(content=user_input)
-            append_unique_message(human_message)
+            if user_input == "/switch":
+                print("\n正在切换会话...\n")
+                current_thread_id = str(uuid.uuid4())
+                print(f"已自动生成新会话 ID: {current_thread_id}\n")
+                continue
 
-            initial_state = {
-                "messages": conversation_messages,
-                "extracted_elements": extracted_elements,
-            }
+            final_state = run_agent(user_input, current_thread_id)
+            messages = final_state.get("messages", []) if isinstance(final_state, dict) else []
+
+            final_answer = ""
+            if messages:
+                for message in reversed(messages):
+                    content = getattr(message, "content", "")
+                    if isinstance(content, str) and content.strip():
+                        final_answer = content.strip()
+                        break
 
             print()
-            current_turn_messages = []
-            rendered_message_keys = set()
-
-            for event in app.stream(
-                initial_state,
-                config={"configurable": {"thread_id": "test_user_001"}},
-            ):
-                for node_name, node_output in event.items():
-                    if "extracted_elements" in node_output and isinstance(node_output["extracted_elements"], dict):
-                        extracted_elements = node_output["extracted_elements"]
-                    elif "extracted_info" in node_output and isinstance(node_output["extracted_info"], dict):
-                        extracted_elements = node_output["extracted_info"]
-
-                    if node_name == "agent":
-                        messages = node_output.get("messages", [])
-                        if messages:
-                            for message in messages:
-                                current_turn_messages.append(message)
-
-                            last_message = messages[-1]
-                            last_key = _message_fingerprint(last_message)
-                            if last_key in rendered_message_keys:
-                                continue
-                            rendered_message_keys.add(last_key)
-
-                            if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-                                print("▶ [AGENT THINKING]")
-                                for tool_call in last_message.tool_calls:
-                                    tool_name = tool_call.get("name", "unknown")
-                                    tool_input = tool_call.get("args", {})
-                                    print()
-                                    print(f"🔴 [TOOL CALL] {tool_name}")
-                                    print(f"   Input: {tool_input}")
-                                    print()
-                            else:
-                                if hasattr(last_message, "content") and last_message.content:
-                                    summary, formal_reply = _split_debug_sections(last_message.content)
-                                    if DEBUG_THINKING and summary:
-                                        print("▶ [THINKING SUMMARY]")
-                                        print(f"   {summary}")
-                                        print()
-                                        print("▶ [AGENT RESPONSE]")
-                                        print(f"   {formal_reply}")
-                                    else:
-                                        print("▶ [AGENT RESPONSE]")
-                                        print(f"   {last_message.content}")
-                                    print()
-
-                    elif node_name == "tools":
-                        messages = node_output.get("messages", [])
-                        if messages:
-                            for message in messages:
-                                current_turn_messages.append(message)
-                            for message in messages:
-                                message_key = _message_fingerprint(message)
-                                if message_key in rendered_message_keys:
-                                    continue
-                                rendered_message_keys.add(message_key)
-                                if hasattr(message, "tool_call_id"):
-                                    tool_result = getattr(message, "content", "")
-                                    if tool_result:
-                                        print("✅ [TOOL RESULT]")
-                                        preview = str(tool_result)[:500]
-                                        if len(str(tool_result)) > 500:
-                                            preview += "\n   ... [输出过长，已截断] ..."
-                                        print(f"   {preview}")
-                                        print()
-
-            for message in current_turn_messages:
-                append_unique_message(message)
+            if final_answer:
+                summary, formal_reply = _split_debug_sections(final_answer)
+                if DEBUG_THINKING and summary:
+                    print("▶ [THINKING SUMMARY]")
+                    print(f"   {summary}")
+                    print()
+                    print("▶ [AGENT RESPONSE]")
+                    print(f"   {formal_reply}")
+                else:
+                    print("▶ [AGENT RESPONSE]")
+                    print(f"   {final_answer}")
+            else:
+                print("▶ [AGENT RESPONSE]")
+                print("   （本轮未获取到有效回复）")
+            print()
 
             print("═" * 70)
             print()
