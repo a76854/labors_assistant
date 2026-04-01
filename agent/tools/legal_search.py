@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Any, Dict, List
 
 import requests
@@ -18,8 +19,14 @@ def _safe_text(value: Any) -> str:
     if value is None:
         return ""
     if isinstance(value, str):
-        return value.strip()
-    return str(value).strip()
+        text = value
+    else:
+        text = str(value)
+
+    # 清理检索结果中的 HTML 高亮标签（如 <em>...</em>）并规范空白字符。
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
 
 
 def _extract_items(data: Any) -> List[Dict[str, Any]]:
@@ -29,6 +36,7 @@ def _extract_items(data: Any) -> List[Dict[str, Any]]:
         return []
 
     candidate_keys: List[str] = [
+        "body",
         "records",
         "list",
         "items",
@@ -92,6 +100,14 @@ def search_public_laws_tool(query: str) -> str:
             article = _pick_field(item, ["article", "articleName", "chapter", "section"])
             content = _pick_field(item, ["content", "summary", "snippet", "abstract"])
             source = _pick_field(item, ["source", "publishOrg", "org", "from"])
+
+            if not article:
+                highlights = item.get("highlights")
+                if isinstance(highlights, list) and highlights:
+                    first_hl = highlights[0] if isinstance(highlights[0], dict) else {}
+                    article = _safe_text(first_hl.get("name"))
+                    if not content:
+                        content = _safe_text(first_hl.get("text"))
 
             lines.append(f"{index}. 标题：{title or '（未提供）'}")
             if article:
