@@ -69,8 +69,8 @@ def test_get_chat_history(session_id):
 
 
 def test_generate_document(session_id):
-    """测试生成文档"""
-    print(f"\nTesting: Generate Document")
+    """测试生成文档 - 调用Agent"""
+    print(f"\nTesting: Generate Document (via Agent)")
     response = requests.post(
         f"{BASE_URL}/sessions/{session_id}/generate-document",
         json={
@@ -78,6 +78,22 @@ def test_generate_document(session_id):
             "format": "docx"
         }
     )
+    print(f"Status: {response.status_code}")
+    data = response.json()
+    print(f"Response: {json.dumps(data, indent=2)}")
+    if response.status_code in [200, 202]:
+        return data.get("id")
+    return None
+
+
+def test_get_document(doc_id):
+    """测试获取文档"""
+    if not doc_id:
+        print("\nSkipping: Get Document (no document ID)")
+        return
+    
+    print(f"\nTesting: Get Document Status")
+    response = requests.get(f"{BASE_URL}/documents/{doc_id}")
     print(f"Status: {response.status_code}")
     print(f"Response: {json.dumps(response.json(), indent=2)}")
 
@@ -93,11 +109,36 @@ def test_health_check():
 if __name__ == "__main__":
     # 运行测试
     print("=" * 60)
-    print("Backend API Tests")
+    print("Backend + Agent Integration Tests")
     print("=" * 60)
     
     # 1. 健康检查
     test_health_check()
+    
+    # 2. 创建会话
+    session_id = test_create_session()
+    
+    if session_id:
+        # 3. 发送消息
+        test_send_message(session_id)
+        
+        # 4. 获取对话历史
+        test_get_chat_history(session_id)
+        
+        # 5. 生成文档（调用Agent）
+        print("\n" + "=" * 60)
+        print("Testing Agent Integration - Document Generation")
+        print("=" * 60)
+        doc_id = test_generate_document(session_id)
+        
+        # 6. 获取文档状态
+        test_get_document(doc_id)
+        
+        print("\n" + "=" * 60)
+        print("All tests completed!")
+        print("=" * 60)
+    else:
+        print("\nERROR: Failed to create session, skipping remaining tests")
     
     # 2. 创建会话
     session_id = test_create_session()
