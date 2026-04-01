@@ -13,7 +13,8 @@ from backend.api.schema import (
 )
 from backend.services.chat import ChatService
 from backend.services.document import DocumentService
-from datetime import datetime, timezone
+from backend.services.agent_service import AgentService
+from datetime import datetime
 from typing import List, Optional
 
 
@@ -72,9 +73,12 @@ def send_message(
         # 存储用户消息
         user_msg = ChatService.add_message(db, session_id, "user", req.content)
         
-        # TODO: 调用Agent生成回复
-        # 这里应该调用LangGraph工作流
-        assistant_reply = "感谢您的输入。请继续补充更多信息。"  # Mock 回复
+        # 调用 Agent 生成回复
+        agent_result = AgentService.process_user_message(
+            user_input=req.content,
+            session_id=session_id
+        )
+        assistant_reply = agent_result.get("final_answer", "Agent 处理出错，请重试")
         ChatService.add_message(db, session_id, "assistant", assistant_reply)
         
         return MessageResponse.model_validate(user_msg)
@@ -127,11 +131,39 @@ def generate_document(
         )
     
     try:
-        # 模拟文档生成（实际应该异步）
-        doc = DocumentService.mock_generate_document(
-            db, session_id, req.template_id, req.format
+        # 创建文档记录（初始状态为 pending）
+        doc = DocumentService.create_document(
+            db,
+            session_id=session_id,
+            template_id=req.template_id,
+            title=f"{session.case_type} - 诉状"
         )
-        return DocumentResponse.model_validate(doc)
+        
+        # 调用 Agent 生成文档
+        document_url = AgentService.generate_document(
+            session_id=session_id,
+            case_type=str(session.case_type),
+            template_id=req.template_id
+        )
+        
+        # 更新文档状态
+        if document_url:
+            DocumentService.update_document_status(
+                db,
+                str(doc.id),
+                status="generated",
+                file_url=document_url
+            )
+        else:
+            DocumentService.update_document_status(
+                db,
+                str(doc.id),
+                status="failed"
+            )
+        
+        # 返回更新后的文档
+        updated_doc = DocumentService.get_document(db, str(doc.id))
+        return DocumentResponse.model_validate(updated_doc)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -183,5 +215,5 @@ def health_check():
     """健康检查"""
     return {
         "status": "ok",
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.utcnow().isoformat()
     }
