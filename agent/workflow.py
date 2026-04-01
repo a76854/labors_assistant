@@ -1,5 +1,6 @@
 import os
 import uuid
+from typing import Any, Dict, List, Optional
 
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -55,6 +56,64 @@ def run_agent(user_input: str, thread_id: str):
         if isinstance(state, dict):
             final_state = state
     return final_state
+
+
+def _extract_final_answer_from_state(state: Dict[str, Any]) -> str:
+    messages = state.get("messages", []) if isinstance(state, dict) else []
+    for message in reversed(messages):
+        content = getattr(message, "content", "")
+        if isinstance(content, str) and content.strip():
+            _, formal_reply = _split_debug_sections(content)
+            return formal_reply.strip() if isinstance(formal_reply, str) else ""
+    return ""
+
+
+def _extract_tools_used_from_state(state: Dict[str, Any]) -> List[str]:
+    messages = state.get("messages", []) if isinstance(state, dict) else []
+    tools_used: List[str] = []
+    for message in messages:
+        tool_calls = getattr(message, "tool_calls", None)
+        if tool_calls:
+            for tool_call in tool_calls:
+                tool_name = tool_call.get("name")
+                if isinstance(tool_name, str) and tool_name:
+                    tools_used.append(tool_name)
+    return list(dict.fromkeys(tools_used))
+
+
+def _extract_generated_document_from_state(state: Dict[str, Any]) -> Optional[str]:
+    messages = state.get("messages", []) if isinstance(state, dict) else []
+    for message in reversed(messages):
+        if hasattr(message, "tool_call_id"):
+            content = getattr(message, "content", "")
+            if isinstance(content, str) and ".docx" in content:
+                return content
+    return None
+
+
+def run_agent_for_backend(user_input: str, thread_id: str) -> Dict[str, Any]:
+    """
+    FastAPI 对接标准入口。
+
+    输入：
+    - user_input: 当前用户输入
+    - thread_id: 建议直接使用 backend 的 session_id，确保多会话隔离
+
+    输出：
+    - final_answer: 助手最终回复（已去除调试分段头）
+    - tools_used: 本轮触发的工具列表
+    - generated_document: 若生成文书，返回相关路径/URL文本
+    - extracted_elements: 结构化白板信息
+    - state: 原始 LangGraph 最终状态（便于排障）
+    """
+    final_state = run_agent(user_input=user_input, thread_id=thread_id)
+    return {
+        "final_answer": _extract_final_answer_from_state(final_state),
+        "tools_used": _extract_tools_used_from_state(final_state),
+        "generated_document": _extract_generated_document_from_state(final_state),
+        "extracted_elements": final_state.get("extracted_elements", {}) if isinstance(final_state, dict) else {},
+        "state": final_state,
+    }
 
 
 class LegalAgentWorkflow:
