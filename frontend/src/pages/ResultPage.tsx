@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, message, Result, Spin } from 'antd';
-import { DownloadOutlined, LeftOutlined, FileWordOutlined, LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { DownloadOutlined, LeftOutlined, FileWordOutlined, LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { getDocument, exportDocument } from '../services/documentService';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import type { DocumentResponse } from '../types';
 import { ApiError } from '../services/request';
 import './ResultPage.css';
@@ -83,6 +84,8 @@ export default function ResultPage() {
         return <div className="custom-status-tag border-green"><CheckCircleOutlined /> 生成完成</div>;
       case 'exported': 
         return <div className="custom-status-tag border-gray">已导出</div>;
+      case 'failed': 
+        return <div className="custom-status-tag border-red"><CloseCircleOutlined /> 生成失败</div>;
       default: 
         return <div className="custom-status-tag border-gray">状态未知</div>;
     }
@@ -149,11 +152,23 @@ export default function ResultPage() {
               </div>
 
               <div className="result-mock-box">
-                <div className="mock-shimmer"></div>
-                <p className="mock-text">
-                  文档结构已解析完毕。<br/>
-                  排版内容预览功能正在开发中，您可点击下方按钮尝试获取本地完整文件。
-                </p>
+                {doc.content ? (
+                  <div className="result-content">
+                    <MarkdownRenderer 
+                      content={doc.content}
+                      className="document-content"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="mock-shimmer"></div>
+                    <p className="mock-text">
+                      {doc.status === 'pending' ? '文档生成中，请稍候...' : '文档内容为空或正在处理。'}
+                      <br/>
+                      您可点击下方按钮尝试获取本地完整文件。
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
