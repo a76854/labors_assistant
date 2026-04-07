@@ -36,7 +36,7 @@ export interface ChatHistoryResponse {
   total: number;
 }
 
-export type DocumentStatus = 'pending' | 'generated' | 'exported';
+export type DocumentStatus = 'pending' | 'generated' | 'exported' | 'failed';
 
 export interface DocumentGenerateRequest {
   template_id: string;

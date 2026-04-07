@@ -4,6 +4,7 @@ import { Input, Button, message, Result, Spin } from 'antd';
 import { SendOutlined, FileTextOutlined } from '@ant-design/icons';
 import { getSession, getMessages, sendMessage } from '../services/chatService';
 import { generateDocument } from '../services/documentService';
+import MarkdownRenderer from '../components/MarkdownRenderer';
 import type { SessionResponse, MessageResponse } from '../types';
 import { ApiError } from '../services/request';
 import './ChatPage.css';
@@ -187,7 +188,12 @@ export default function ChatPage() {
                   {msg.role === 'assistant' ? '⚖️' : '👤'}
                 </div>
                 <div className="chat-content-wrapper">
-                  <div className="chat-bubble">{msg.content}</div>
+                  <div className="chat-bubble">
+                    <MarkdownRenderer 
+                      content={msg.content} 
+                      isChatBubble={true}
+                    />
+                  </div>
                   <div className="chat-timestamp">
                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
