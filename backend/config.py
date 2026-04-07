@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # LLM Configuration
     LLM_api_key: str = ""
     LLM_model: str = "qwen3.5-plus"
+    LLM_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     
     # Legal API Configuration (得理法律平台)
     legal_api_base_url: str = "https://openapi.delilegal.com/api/qa/v3/search"

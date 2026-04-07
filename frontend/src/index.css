@@ -1,0 +1,240 @@
+/* ============================================================
+   全局样式 — 劳动者维权 AI 助手
+   - 深色模式优先设计
+   - CSS 变量统一管理配色、阴影、字体
+   - 毛玻璃 / 材质 / 分层阴影公共 class
+   ============================================================ */
+
+/* --- Google Fonts: Inter + Noto Sans SC --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+
+/* ==============================
+   CSS 变量 — 深色模式（默认）
+   ============================== */
+:root {
+  /* 配色 */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #60a5fa;
+  --color-primary-active: #2563eb;
+  --color-primary-glow: rgba(59, 130, 246, 0.2);
+
+  /* 背景色 */
+  --bg-base: #141416;
+  --bg-elevated: #1e1e22;
+  --bg-container: rgba(40, 40, 46, 0.75);
+  --bg-popover: rgba(50, 50, 58, 0.88);
+  --bg-hover: rgba(255, 255, 255, 0.04);
+
+  /* 文字色 */
+  --text-primary: rgba(255, 255, 255, 0.88);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-tertiary: rgba(255, 255, 255, 0.35);
+  --text-inverse: rgba(0, 0, 0, 0.85);
+
+  /* 边框 / 分隔线 */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.12);
+
+  /* 阴影 */
+  --shadow-border: 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-inset-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  /* 毛玻璃 */
+  --blur-light: blur(12px) saturate(150%);
+  --blur-medium: blur(20px) saturate(160%);
+  --blur-heavy: blur(32px) saturate(180%);
+
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  /* 过渡 */
+  --transition-fast: all 0.15s ease-out;
+  --transition-default: all 0.2s ease-out;
+  --transition-slow: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* 字体 */
+  --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter',
+    'Noto Sans SC', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* 导航栏高度 */
+  --navbar-height: 56px;
+}
+
+/* ==============================
+   CSS 变量 — 浅色模式
+   ============================== */
+[data-theme='light'] {
+  --color-primary: #2563eb;
+  --color-primary-hover: #3b82f6;
+  --color-primary-active: #1d4ed8;
+  --color-primary-glow: rgba(37, 99, 235, 0.15);
+
+  --bg-base: #f5f5f7;
+  --bg-elevated: #ffffff;
+  --bg-container: rgba(255, 255, 255, 0.82);
+  --bg-popover: rgba(255, 255, 255, 0.92);
+  --bg-hover: rgba(0, 0, 0, 0.03);
+
+  --text-primary: rgba(0, 0, 0, 0.85);
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-tertiary: rgba(0, 0, 0, 0.35);
+  --text-inverse: rgba(255, 255, 255, 0.92);
+
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-default: rgba(0, 0, 0, 0.08);
+
+  --shadow-border: 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --shadow-inset-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ==============================
+   全局基础样式
+   ============================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background-color: var(--bg-base);
+  line-height: 1.6;
+  min-height: 100vh;
+  transition: background-color 0.3s ease-out, color 0.3s ease-out;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* 选中文字颜色 */
+::selection {
+  background: var(--color-primary-glow);
+  color: var(--text-primary);
+}
+
+/* 链接默认样式 */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+/* ==============================
+   公共工具 class
+   ============================== */
+
+/* 毛玻璃容器 — 底层（如侧栏） */
+.glass-base {
+  background: var(--bg-container);
+  backdrop-filter: var(--blur-light);
+  -webkit-backdrop-filter: var(--blur-light);
+}
+
+/* 毛玻璃容器 — 中层（如主内容卡片） */
+.glass-card {
+  background: var(--bg-container);
+  backdrop-filter: var(--blur-medium);
+  -webkit-backdrop-filter: var(--blur-medium);
+  box-shadow: var(--shadow-border), var(--shadow-inset-highlight),
+    var(--shadow-md);
+  border-radius: var(--radius-lg);
+}
+
+/* 毛玻璃容器 — 顶层（如弹窗） */
+.glass-popover {
+  background: var(--bg-popover);
+  backdrop-filter: var(--blur-heavy);
+  -webkit-backdrop-filter: var(--blur-heavy);
+  box-shadow: var(--shadow-border), var(--shadow-inset-highlight),
+    var(--shadow-lg);
+  border-radius: var(--radius-lg);
+}
+
+/* 噪点纹理叠加层 — 使用 ::after 伪元素 */
+.noise-texture::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+.noise-texture {
+  position: relative;
+}
+
+/* 渐入动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 按钮点击缩放反馈 */
+.press-effect:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease-out;
+}
+
+/* 页面容器 — 用于各页面最外层 */
+.page-container {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
