@@ -5,11 +5,11 @@
 # pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # ===== LangGraph / LangChain 核心 =====
-langgraph>=0.2,<1.0
-langchain>=0.2,<1.0
-langchain-core>=0.2,<1.0
-langchain-openai>=0.1,<1.0
-openai>=1.30,<2.0
+langgraph
+langchain
+langchain-core
+langchain-openai
+openai
 
 # ===== 数据模型与配置 =====
 pydantic>=2.7,<3.0

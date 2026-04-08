@@ -1,6 +1,7 @@
 import os
 import uuid
-from typing import Any, Dict, List, Optional
+import json
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -56,6 +57,60 @@ def run_agent(user_input: str, thread_id: str):
         if isinstance(state, dict):
             final_state = state
     return final_state
+
+
+def _chunk_to_text(chunk: Any) -> str:
+    """将模型流式 chunk 统一转换为字符串 token。"""
+    content = getattr(chunk, "content", "")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: List[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text") or item.get("content") or ""
+                if isinstance(text, str):
+                    parts.append(text)
+        return "".join(parts)
+    return str(content) if content is not None else ""
+
+
+async def run_agent_stream(user_input: str, thread_id: str) -> AsyncGenerator[str, None]:
+    """FastAPI/SSE 对接入口：按 LangGraph v2 事件流输出 token 与工具事件。"""
+    config = {"configurable": {"thread_id": thread_id}}
+    try:
+        async for event in app.astream_events(
+            {"messages": [("user", user_input)]},
+            config=config,
+            version="v2",
+        ):
+            if not isinstance(event, dict):
+                continue
+
+            event_type = event.get("event")
+
+            if event_type == "on_chat_model_stream":
+                data = event.get("data", {})
+                if not isinstance(data, dict):
+                    data = {}
+                chunk = data.get("chunk")
+                token = _chunk_to_text(chunk)
+                if token:
+                    yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
+
+            elif event_type == "on_tool_start":
+                tool_name = event.get("name", "unknown_tool")
+                yield f"data: {json.dumps({'type': 'tool_start', 'tool_name': tool_name}, ensure_ascii=False)}\n\n"
+
+            elif event_type == "on_tool_end":
+                tool_name = event.get("name", "unknown_tool")
+                yield f"data: {json.dumps({'type': 'tool_end', 'tool_name': tool_name}, ensure_ascii=False)}\n\n"
+
+        yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
+    except Exception as exc:
+        yield f"data: {json.dumps({'type': 'error', 'message': str(exc)}, ensure_ascii=False)}\n\n"
 
 
 def _extract_final_answer_from_state(state: Dict[str, Any]) -> str:
@@ -223,7 +278,7 @@ def _split_debug_sections(content: str) -> tuple[str, str]:
 
 
 def _message_fingerprint(message) -> str:
-    """为消息生成稳定指纹，避免流式事件重复打印同一条内容。"""
+    
     message_id = getattr(message, "id", None)
     if message_id:
         return f"id::{message_id}"

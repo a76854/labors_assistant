@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input, Button, message, Result, Spin } from 'antd';
-import { SendOutlined, FileTextOutlined } from '@ant-design/icons';
-import { getSession, getMessages, sendMessage } from '../services/chatService';
+import { SendOutlined, FileTextOutlined, StopOutlined } from '@ant-design/icons';
+import { getSession, getMessages, streamChat } from '../services/chatService';
 import { generateDocument } from '../services/documentService';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import type { SessionResponse, MessageResponse } from '../types';
@@ -20,10 +20,13 @@ export default function ChatPage() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [currentReply, setCurrentReply] = useState('');
+  const [toolHint, setToolHint] = useState('');
   const [notFound, setNotFound] = useState(false);
   const [isGeneratingDoc, setIsGeneratingDoc] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const getErrorMessage = (error: unknown, fallback: string): string => {
     if (error instanceof ApiError || error instanceof Error) {
@@ -39,6 +42,12 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -80,26 +89,90 @@ export default function ChatPage() {
     const currentText = inputText.trim();
     setInputText('');
     setIsSending(true);
+    setIsTyping(true);
+    setCurrentReply('');
+    setToolHint('');
+    abortControllerRef.current = new AbortController();
+    let replyBuffer = '';
 
     try {
-      // 1. 发送消息（接口返回用户发送的实体）
-      const userMessage = await sendMessage(sessionId, { content: currentText });
-      
-      // 2. 将刚发送的消息压入列表，并开启打字等待
+      const nowIso = new Date().toISOString();
+      const userMessage: MessageResponse = {
+        id: `local-user-${Date.now()}`,
+        session_id: sessionId,
+        role: 'user',
+        content: currentText,
+        timestamp: nowIso,
+      };
       setMessages((prev) => [...prev, userMessage]);
-      setIsTyping(true);
 
-      // 3. 重新拉取服务端历史消息记录（包含助理的 Mock 回复）
-      const historyData = await getMessages(sessionId);
-      setMessages(historyData.messages || []);
+      await streamChat(sessionId, currentText, {
+        onToken: (token) => {
+          replyBuffer += token;
+          setCurrentReply(replyBuffer);
+        },
+        onToolStart: (toolName) => {
+          if (toolName === 'search_public_laws_tool') {
+            setToolHint('正在为您检索法律条文...');
+          } else if (toolName === 'search_public_cases_tool') {
+            setToolHint('正在为您检索相似判例...');
+          } else if (toolName === 'search_private_knowledge_tool') {
+            setToolHint('正在为您检索私域知识...');
+          } else if (toolName === 'generate_legal_doc_tool') {
+            setToolHint('正在为您生成法律文书...');
+          } else {
+            setToolHint(`正在调用工具：${toolName}`);
+          }
+        },
+        onToolEnd: () => {
+          setToolHint('');
+        },
+        onError: (errMsg) => {
+          throw new Error(errMsg || '流式请求异常');
+        },
+      }, abortControllerRef.current.signal);
+
+      if (replyBuffer.trim()) {
+        const assistantMessage: MessageResponse = {
+          id: `local-assistant-${Date.now()}`,
+          session_id: sessionId,
+          role: 'assistant',
+          content: replyBuffer,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      }
 
     } catch (error: unknown) {
-      // 失败时恢复输入栏
-      setInputText(currentText);
-      message.error(getErrorMessage(error, '发送失败，请稍后重试'));
+      const isAbort = error instanceof DOMException && error.name === 'AbortError';
+      if (isAbort) {
+        if (replyBuffer.trim()) {
+          const assistantMessage: MessageResponse = {
+            id: `local-assistant-${Date.now()}`,
+            session_id: sessionId,
+            role: 'assistant',
+            content: replyBuffer,
+            timestamp: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        }
+        message.info('已停止生成');
+      } else {
+        setInputText(currentText);
+        message.error(getErrorMessage(error, '发送失败，请稍后重试'));
+      }
     } finally {
+      abortControllerRef.current = null;
       setIsSending(false);
       setIsTyping(false);
+      setToolHint('');
+      setCurrentReply('');
+    }
+  };
+
+  const handleStopGenerate = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
   };
 
@@ -207,12 +280,17 @@ export default function ChatPage() {
             <div className="chat-message-row assistant">
               <div className="chat-avatar">⚖️</div>
               <div className="chat-content-wrapper">
+                {toolHint && <div className="chat-tool-hint">{toolHint}</div>}
                 <div className="chat-bubble">
-                  <div className="typing-indicator">
-                    <span className="typing-dot"></span>
-                    <span className="typing-dot"></span>
-                    <span className="typing-dot"></span>
-                  </div>
+                  {currentReply ? (
+                    <MarkdownRenderer content={currentReply} isChatBubble={true} />
+                  ) : (
+                    <div className="typing-indicator">
+                      <span className="typing-dot"></span>
+                      <span className="typing-dot"></span>
+                      <span className="typing-dot"></span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -244,6 +322,15 @@ export default function ChatPage() {
             loading={isSending}
             className="chat-send-btn press-effect"
           />
+          <Button
+            danger
+            icon={<StopOutlined />}
+            onClick={handleStopGenerate}
+            disabled={!isSending}
+            className="chat-stop-btn"
+          >
+            停止生成
+          </Button>
         </div>
       </div>
     </div>

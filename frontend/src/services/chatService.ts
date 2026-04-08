@@ -4,6 +4,7 @@
  * - 消息发送、历史查询
  */
 import { get, post } from './request';
+import { ApiError } from './request';
 import type {
   SessionCreateRequest,
   SessionResponse,
@@ -11,6 +12,126 @@ import type {
   MessageResponse,
   ChatHistoryResponse,
 } from '../types';
+
+const AGENT_BASE_URL: string =
+  import.meta.env.VITE_AGENT_BASE_URL || 'http://localhost:8001';
+const AGENT_CHAT_PATH: string =
+  import.meta.env.VITE_AGENT_CHAT_PATH || '/chat';
+
+type StreamEventPayload = {
+  type?: string;
+  content?: string;
+  tool_name?: string;
+  message?: string;
+};
+
+type StreamChatHandlers = {
+  onToken?: (token: string) => void;
+  onToolStart?: (toolName: string) => void;
+  onToolEnd?: (toolName: string) => void;
+  onDone?: () => void;
+  onError?: (message: string) => void;
+};
+
+function parseSseDataBlock(block: string): StreamEventPayload | null {
+  if (!block) return null;
+  const lines = block
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const dataLines = lines
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice(5).trim());
+
+  if (dataLines.length === 0) return null;
+
+  const rawJson = dataLines.join('');
+  if (!rawJson) return null;
+
+  try {
+    return JSON.parse(rawJson) as StreamEventPayload;
+  } catch {
+    return null;
+  }
+}
+
+export async function streamChat(
+  threadId: string,
+  userInput: string,
+  handlers: StreamChatHandlers,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch(`${AGENT_BASE_URL}${AGENT_CHAT_PATH}`, {
+    method: 'POST',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      user_input: userInput,
+      thread_id: threadId,
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new ApiError(response.status, detail || `请求失败，状态码：${response.status}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new ApiError(0, '流式响应不可用：response.body 为空');
+  }
+
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      const tail = decoder.decode();
+      if (tail) {
+        buffer += tail;
+      }
+      break;
+    }
+
+    if (!value) {
+      continue;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split('\n\n');
+    buffer = blocks.pop() ?? '';
+
+    for (const block of blocks) {
+      const payload = parseSseDataBlock(block);
+      if (!payload?.type) continue;
+
+      if (payload.type === 'token' && payload.content) {
+        handlers.onToken?.(payload.content);
+      } else if (payload.type === 'tool_start') {
+        handlers.onToolStart?.(payload.tool_name || 'unknown_tool');
+      } else if (payload.type === 'tool_end') {
+        handlers.onToolEnd?.(payload.tool_name || 'unknown_tool');
+      } else if (payload.type === 'error') {
+        handlers.onError?.(payload.message || '流式响应出错');
+      } else if (payload.type === 'done') {
+        handlers.onDone?.();
+      }
+    }
+  }
+
+  if (buffer.trim()) {
+    const payload = parseSseDataBlock(buffer.trim());
+    if (payload?.type === 'token' && payload.content) {
+      handlers.onToken?.(payload.content);
+    }
+  }
+
+  handlers.onDone?.();
+}
 
 /** 创建新会话 */
 export async function createSession(data: SessionCreateRequest): Promise<SessionResponse> {
