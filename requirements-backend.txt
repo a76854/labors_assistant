@@ -1,7 +1,7 @@
 # Core Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
+fastapi
+uvicorn[standard]
+pydantic>=2.7.4
 pydantic-settings==2.1.0
 
 # Database
@@ -10,9 +10,9 @@ alembic==1.12.1
 psycopg2-binary==2.9.9
 
 # AI & LLM
-langchain==0.0.350
-langgraph==0.0.1
-langsmith==0.0.70
+langchain>=0.2.0
+langgraph
+langsmith
 
 # Document Processing
 python-docx==0.8.11
@@ -22,7 +22,7 @@ PyPDF2==3.0.1
 
 # Utilities
 requests==2.31.0
-httpx==0.25.2
+httpx
 python-dotenv==1.0.0
 python-multipart==0.0.6
 

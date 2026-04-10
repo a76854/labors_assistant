@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Dict
+from typing import Dict, Optional
 
 from agent.state import AgentState
 from agent.prompts import SYSTEM_PROMPT
@@ -13,6 +13,7 @@ from agent.tools.doc_generator import generate_legal_doc_tool
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
+from langchain_core.runnables import RunnableConfig
 
 
 load_dotenv()
@@ -111,7 +112,7 @@ llm = ChatOpenAI(**llm_init_kwargs)
 llm_with_tools = llm.bind_tools(tools_list)
 
 
-def call_agent(state: AgentState) -> dict:
+def call_agent(state: AgentState, config: Optional[RunnableConfig] = None) -> dict:
     whiteboard_elements = _build_whiteboard(state)
 
     public_laws_call_count = 0
@@ -229,7 +230,7 @@ def call_agent(state: AgentState) -> dict:
     recent_history = _trim_recent_history(state["messages"], TRIM_WINDOW_SIZE)
     messages_with_system = [system_message] + recent_history
 
-    response = llm_with_tools.invoke(messages_with_system)
+    response = llm_with_tools.invoke(messages_with_system, config=config)
 
     # 关键约束：检索完成后禁止重复 search_*，优先收口到文书生成。
     if closure_ready and hasattr(response, "tool_calls") and response.tool_calls:
@@ -247,7 +248,7 @@ def call_agent(state: AgentState) -> dict:
             forced_system_sections = system_sections + [forced_rule.content]
             forced_system_message = SystemMessage(content="\n\n".join(forced_system_sections))
             forced_messages = [forced_system_message] + recent_history
-            response = llm_with_tools.invoke(forced_messages)
+            response = llm_with_tools.invoke(forced_messages, config=config)
 
     if (
         DEBUG_THINKING

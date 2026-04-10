@@ -4,7 +4,8 @@ Pydantic 数据验证schemas（请求/响应模型）
 
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from datetime import datetime,timezone
+from datetime import datetime
+from backend.utils.timezone import now_beijing
 
 
 # ============================================================================
@@ -36,6 +37,36 @@ class SessionResponse(BaseModel):
         from_attributes = True
 
 
+class SessionListItem(BaseModel):
+    """首页历史会话列表项。"""
+
+    id: str = Field(..., description="会话ID")
+    case_type: str = Field(..., description="案件类型")
+    status: str = Field(..., description="会话状态")
+    description: Optional[str] = Field(None, description="案件描述")
+    created_at: datetime = Field(..., description="创建时间")
+    updated_at: datetime = Field(..., description="最近更新时间")
+    message_count: int = Field(default=0, description="消息总数")
+    last_message_preview: Optional[str] = Field(None, description="最近一条消息摘要")
+    last_message_role: Optional[str] = Field(None, description="最近一条消息的角色")
+    last_message_at: Optional[datetime] = Field(None, description="最近一条消息时间")
+
+
+class SessionListResponse(BaseModel):
+    """首页历史会话列表响应。"""
+
+    sessions: List[SessionListItem] = Field(..., description="会话列表")
+    total: int = Field(..., description="会话总数")
+
+
+class DocumentReadinessResponse(BaseModel):
+    """文书生成就绪状态。"""
+
+    ready: bool = Field(..., description="助手是否已明确提示可以生成诉状")
+    missing_fields: List[str] = Field(default_factory=list, description="未满足条件时的提示项")
+    collected_fields: Dict[str, str] = Field(default_factory=dict, description="当前命中的就绪信号")
+
+
 # ============================================================================
 # 消息/对话相关 Schemas
 # ============================================================================
@@ -46,6 +77,19 @@ class MessageCreateRequest(BaseModel):
     用户在会话中提交一条消息时使用，通常是事实补充、问题描述或材料说明。
     """
     content: str = Field(..., min_length=1, description="消息内容")
+
+
+class MessageSyncItem(BaseModel):
+    """前端同步到数据库的消息项。"""
+
+    role: str = Field(..., description="消息角色，取值范围: user|assistant")
+    content: str = Field(..., min_length=1, description="消息内容")
+
+
+class MessageSyncRequest(BaseModel):
+    """消息同步请求。"""
+
+    messages: List[MessageSyncItem] = Field(..., min_length=1, description="需要持久化的消息列表")
 
 
 class MessageResponse(BaseModel):
@@ -217,7 +261,7 @@ class ErrorResponse(BaseModel):
     code: str = Field(..., description="错误码")
     message: str = Field(..., description="错误信息")
     details: Optional[Dict[str, Any]] = Field(None, description="错误详情")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="错误发生时间")
+    timestamp: datetime = Field(default_factory=now_beijing, description="错误发生时间")
 
 
 # ============================================================================

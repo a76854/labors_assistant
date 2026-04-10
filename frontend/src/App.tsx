@@ -40,14 +40,22 @@ export default function App() {
             controlHeight: 40,
             controlHeightLG: 48,
             paddingContentHorizontal: 24,
+            defaultBg: 'rgba(255, 255, 255, 0.05)',
+            defaultBorderColor: 'rgba(255, 255, 255, 0.1)',
           },
           Input: {
             // 输入框内阴影效果通过 CSS 补充
             controlHeight: 40,
+            colorBgContainer: 'rgba(0, 0, 0, 0.1)',
+            colorBorder: 'rgba(255, 255, 255, 0.08)',
+          },
+          Card: {
+            colorBgContainer: 'transparent',
+            colorBorderSecondary: 'transparent',
           },
           Message: {
-            // 消息提示
-            contentBg: 'rgba(40, 40, 46, 0.92)',
+            // 消息提示，使用全剧统一的弹窗底色
+            contentBg: 'var(--bg-popover)',
           },
         },
       }}

@@ -123,3 +123,27 @@ export async function post<T = unknown>(
     throw new ApiError(0, '网络异常，无法连接到服务器', error);
   }
 }
+
+/**
+ * DELETE 请求
+ */
+export async function del<T = unknown>(
+  path: string,
+  options?: RequestOptions,
+): Promise<T> {
+  const { params, ...fetchOptions } = options || {};
+  try {
+    const response = await fetch(buildUrl(path, params), {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...fetchOptions?.headers,
+      },
+      ...fetchOptions,
+    });
+    return handleResponse<T>(response);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(0, '网络异常，无法连接到服务器', error);
+  }
+}

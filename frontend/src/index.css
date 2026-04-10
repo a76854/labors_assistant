@@ -16,36 +16,36 @@
   --color-primary: #3b82f6;
   --color-primary-hover: #60a5fa;
   --color-primary-active: #2563eb;
-  --color-primary-glow: rgba(59, 130, 246, 0.2);
+  --color-primary-glow: rgba(59, 130, 246, 0.25);
 
-  /* 背景色 */
-  --bg-base: #141416;
-  --bg-elevated: #1e1e22;
-  --bg-container: rgba(40, 40, 46, 0.75);
-  --bg-popover: rgba(50, 50, 58, 0.88);
-  --bg-hover: rgba(255, 255, 255, 0.04);
+  /* 背景色 - 让底色更深以凸显容器 */
+  --bg-base: #0f0f11;
+  --bg-elevated: #1a1a1e;
+  --bg-container: rgba(28, 28, 32, 0.65);
+  --bg-popover: rgba(38, 38, 44, 0.85);
+  --bg-hover: rgba(255, 255, 255, 0.06);
 
   /* 文字色 */
-  --text-primary: rgba(255, 255, 255, 0.88);
-  --text-secondary: rgba(255, 255, 255, 0.55);
-  --text-tertiary: rgba(255, 255, 255, 0.35);
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-tertiary: rgba(255, 255, 255, 0.38);
   --text-inverse: rgba(0, 0, 0, 0.85);
 
   /* 边框 / 分隔线 */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-default: rgba(255, 255, 255, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.1);
 
-  /* 阴影 */
-  --shadow-border: 0 0 0 1px rgba(255, 255, 255, 0.06);
-  --shadow-inset-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+  /* 阴影与微光 - 高级质感核心 */
+  --shadow-border: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-inset-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5), 0 16px 48px rgba(0, 0, 0, 0.3);
 
   /* 毛玻璃 */
-  --blur-light: blur(12px) saturate(150%);
-  --blur-medium: blur(20px) saturate(160%);
-  --blur-heavy: blur(32px) saturate(180%);
+  --blur-light: blur(16px) saturate(180%);
+  --blur-medium: blur(24px) saturate(190%);
+  --blur-heavy: blur(40px) saturate(200%);
 
   /* 圆角 */
   --radius-sm: 8px;
@@ -55,8 +55,8 @@
 
   /* 过渡 */
   --transition-fast: all 0.15s ease-out;
-  --transition-default: all 0.2s ease-out;
-  --transition-slow: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-default: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --transition-slow: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 
   /* 字体 */
   --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter',
@@ -78,23 +78,23 @@
 
   --bg-base: #f5f5f7;
   --bg-elevated: #ffffff;
-  --bg-container: rgba(255, 255, 255, 0.82);
-  --bg-popover: rgba(255, 255, 255, 0.92);
-  --bg-hover: rgba(0, 0, 0, 0.03);
+  --bg-container: rgba(255, 255, 255, 0.7);
+  --bg-popover: rgba(255, 255, 255, 0.88);
+  --bg-hover: rgba(0, 0, 0, 0.035);
 
-  --text-primary: rgba(0, 0, 0, 0.85);
+  --text-primary: rgba(0, 0, 0, 0.88);
   --text-secondary: rgba(0, 0, 0, 0.55);
   --text-tertiary: rgba(0, 0, 0, 0.35);
-  --text-inverse: rgba(255, 255, 255, 0.92);
+  --text-inverse: rgba(255, 255, 255, 0.95);
 
-  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-subtle: rgba(0, 0, 0, 0.04);
   --border-default: rgba(0, 0, 0, 0.08);
 
-  --shadow-border: 0 0 0 1px rgba(0, 0, 0, 0.05);
-  --shadow-inset-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.5);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-border: 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow-inset-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.03), 0 4px 12px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08), 0 16px 48px rgba(0, 0, 0, 0.04);
 }
 
 /* ==============================
@@ -176,9 +176,9 @@ a:hover {
   background: var(--bg-container);
   backdrop-filter: var(--blur-medium);
   -webkit-backdrop-filter: var(--blur-medium);
-  box-shadow: var(--shadow-border), var(--shadow-inset-highlight),
-    var(--shadow-md);
+  box-shadow: var(--shadow-border), var(--shadow-inset-highlight), var(--shadow-sm);
   border-radius: var(--radius-lg);
+  border: none;
 }
 
 /* 毛玻璃容器 — 顶层（如弹窗） */
@@ -226,7 +226,7 @@ a:hover {
 
 /* 按钮点击缩放反馈 */
 .press-effect:active {
-  transform: scale(0.97);
+  transform: scale(0.96) !important;
   transition: transform 0.1s ease-out;
 }
 

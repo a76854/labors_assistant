@@ -1,6 +1,7 @@
 import os
 import uuid
-from typing import Any, Dict, List, Optional
+import json
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -56,6 +57,131 @@ def run_agent(user_input: str, thread_id: str):
         if isinstance(state, dict):
             final_state = state
     return final_state
+
+
+def _chunk_to_text(chunk: Any) -> str:
+    """将模型流式 chunk 统一转换为字符串 token。"""
+    content = getattr(chunk, "content", "")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: List[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text") or item.get("content") or ""
+                if isinstance(text, str):
+                    parts.append(text)
+        return "".join(parts)
+    return str(content) if content is not None else ""
+
+
+def _event_output_to_text(payload: Any) -> str:
+    """从 LangChain/LangGraph 事件输出中提取可展示的文本。"""
+    if payload is None:
+        return ""
+
+    if hasattr(payload, "content"):
+        return _chunk_to_text(payload)
+
+    if isinstance(payload, dict):
+        for key in ("output", "message", "chunk"):
+            text = _event_output_to_text(payload.get(key))
+            if text:
+                return text
+
+        content = payload.get("content")
+        if content is not None:
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                parts: List[str] = []
+                for item in content:
+                    if isinstance(item, str):
+                        parts.append(item)
+                    elif isinstance(item, dict):
+                        text = item.get("text") or item.get("content") or ""
+                        if isinstance(text, str):
+                            parts.append(text)
+                merged = "".join(parts)
+                if merged:
+                    return merged
+
+        generations = payload.get("generations")
+        if isinstance(generations, list):
+            parts = [_event_output_to_text(item) for item in generations]
+            return "".join(part for part in parts if part)
+
+        text = payload.get("text")
+        if isinstance(text, str):
+            return text
+
+        return ""
+
+    if isinstance(payload, list):
+        parts = [_event_output_to_text(item) for item in payload]
+        return "".join(part for part in parts if part)
+
+    text = getattr(payload, "text", None)
+    if isinstance(text, str):
+        return text
+
+    return ""
+
+
+async def run_agent_stream(user_input: str, thread_id: str) -> AsyncGenerator[str, None]:
+    """FastAPI/SSE 对接入口：按 LangGraph v2 事件流输出 token 与工具事件。"""
+    config = {"configurable": {"thread_id": thread_id}}
+    chat_model_stream_state: Dict[str, bool] = {}
+    try:
+        async for event in app.astream_events(
+            {"messages": [("user", user_input)]},
+            config=config,
+            version="v2",
+        ):
+            if not isinstance(event, dict):
+                continue
+
+            event_type = event.get("event")
+            run_id = str(event.get("run_id") or "")
+
+            if event_type == "on_chat_model_start":
+                if run_id:
+                    chat_model_stream_state[run_id] = False
+
+            elif event_type == "on_chat_model_stream":
+                data = event.get("data", {})
+                if not isinstance(data, dict):
+                    data = {}
+                chunk = data.get("chunk")
+                token = _chunk_to_text(chunk)
+                if token:
+                    if run_id:
+                        chat_model_stream_state[run_id] = True
+                    yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
+
+            elif event_type == "on_chat_model_end":
+                data = event.get("data", {})
+                if not isinstance(data, dict):
+                    data = {}
+                had_stream = chat_model_stream_state.pop(run_id, False) if run_id else False
+                if not had_stream:
+                    token = _event_output_to_text(data)
+                    if token:
+                        yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
+
+            elif event_type == "on_tool_start":
+                tool_name = event.get("name", "unknown_tool")
+                yield f"data: {json.dumps({'type': 'tool_start', 'tool_name': tool_name}, ensure_ascii=False)}\n\n"
+
+            elif event_type == "on_tool_end":
+                tool_name = event.get("name", "unknown_tool")
+                yield f"data: {json.dumps({'type': 'tool_end', 'tool_name': tool_name}, ensure_ascii=False)}\n\n"
+
+        yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
+    except Exception as exc:
+        yield f"data: {json.dumps({'type': 'error', 'message': str(exc)}, ensure_ascii=False)}\n\n"
 
 
 def _extract_final_answer_from_state(state: Dict[str, Any]) -> str:
@@ -223,7 +349,7 @@ def _split_debug_sections(content: str) -> tuple[str, str]:
 
 
 def _message_fingerprint(message) -> str:
-    """为消息生成稳定指纹，避免流式事件重复打印同一条内容。"""
+    
     message_id = getattr(message, "id", None)
     if message_id:
         return f"id::{message_id}"
@@ -292,6 +418,6 @@ if __name__ == "__main__":
             print("\n\n感谢使用！再见。")
             break
         except Exception as exc:
-            print(f"\n❌ 错误: {str(exc)}\n")
+            print(f"\n[错误] {str(exc)}\n")
             print("═" * 70)
             print()
