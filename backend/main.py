@@ -20,14 +20,14 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """应用生命周期上下文管理器"""
     # ===== 启动事件 =====
-    print(f"🚀 Starting {settings.app_name} v{settings.app_version}")
-    print(f"📝 API Documentation: http://{settings.server_host}:{settings.server_port}/docs")
-    print(f"🔧 Debug Mode: {settings.debug}")
+    print(f"[启动] {settings.app_name} v{settings.app_version}")
+    print(f"[文档] http://{settings.server_host}:{settings.server_port}/docs")
+    print(f"[调试模式] {settings.debug}")
     
     yield
     
     # ===== 关闭事件 =====
-    print(f"🛑 Shutting down {settings.app_name}")
+    print(f"[关闭] {settings.app_name}")
 
 
 # 创建FastAPI应用

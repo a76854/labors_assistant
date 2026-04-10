@@ -1,10 +1,7 @@
-"""
-配置管理模块
-"""
-
-from pydantic_settings import BaseSettings
 from functools import lru_cache
-from pathlib import Path
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -27,6 +24,7 @@ class Settings(BaseSettings):
     # LLM Configuration
     LLM_api_key: str = ""
     LLM_model: str = "qwen3.5-plus"
+    LLM_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     
     # Legal API Configuration (得理法律平台)
     legal_api_base_url: str = "https://openapi.delilegal.com/api/qa/v3/search"
@@ -47,6 +45,20 @@ class Settings(BaseSettings):
     enable_case_search: bool = True
     enable_law_search: bool = True
     enable_document_export: bool = True
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug_value(cls, value):
+        """兼容常见运行模式字符串，避免环境变量导致启动失败。"""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on", "debug", "dev", "development"}:
+                return True
+            if normalized in {"0", "false", "no", "off", "release", "prod", "production"}:
+                return False
+        return value
     
     class Config:
         env_file = ".env"

@@ -23,8 +23,7 @@
   background: var(--bg-container);
   backdrop-filter: var(--blur-medium);
   -webkit-backdrop-filter: var(--blur-medium);
-  box-shadow: var(--shadow-border), var(--shadow-inset-highlight),
-    0 1px 3px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 0 0 var(--border-subtle), 0 4px 16px rgba(0, 0, 0, 0.05);
   transition: var(--transition-default);
 }
 
