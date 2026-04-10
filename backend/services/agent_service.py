@@ -78,5 +78,14 @@ class AgentService:
             session_id=session_id,
             max_iterations=15
         )
-        
-        return result.get("generated_document")
+
+        generated_document = result.get("generated_document")
+        if generated_document:
+            return generated_document
+
+        # 兜底：部分模型会把下载链接写在 final_answer 中，而不是 ToolMessage。
+        final_answer = result.get("final_answer", "")
+        if isinstance(final_answer, str) and ".docx" in final_answer:
+            return final_answer
+
+        return None

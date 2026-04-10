@@ -3,11 +3,13 @@
  * - 会话创建、获取
  * - 消息发送、历史查询
  */
-import { get, post } from './request';
+import { del, get, post } from './request';
 import { ApiError } from './request';
 import type {
   SessionCreateRequest,
+  SessionListResponse,
   SessionResponse,
+  DocumentReadinessResponse,
   MessageCreateRequest,
   MessageResponse,
   ChatHistoryResponse,
@@ -138,6 +140,21 @@ export async function createSession(data: SessionCreateRequest): Promise<Session
   return post<SessionResponse>('/api/v1/sessions', data);
 }
 
+/** 获取历史会话列表 */
+export async function listSessions(
+  limit?: number,
+  offset?: number,
+): Promise<SessionListResponse> {
+  return get<SessionListResponse>('/api/v1/sessions', {
+    params: { limit, offset },
+  });
+}
+
+/** 删除会话 */
+export async function deleteSession(sessionId: string): Promise<void> {
+  return del<void>(`/api/v1/sessions/${sessionId}`);
+}
+
 /** 获取会话详情 */
 export async function getSession(sessionId: string): Promise<SessionResponse> {
   return get<SessionResponse>(`/api/v1/sessions/${sessionId}`);
@@ -160,4 +177,19 @@ export async function getMessages(
   return get<ChatHistoryResponse>(`/api/v1/sessions/${sessionId}/messages`, {
     params: { limit, offset },
   });
+}
+
+/** 获取会话文书生成就绪状态 */
+export async function getDocumentReadiness(
+  sessionId: string,
+): Promise<DocumentReadinessResponse> {
+  return get<DocumentReadinessResponse>(`/api/v1/sessions/${sessionId}/document-readiness`);
+}
+
+/** 将前端流式对话消息写回后端数据库 */
+export async function syncMessages(
+  sessionId: string,
+  messages: Array<Pick<MessageResponse, 'role' | 'content'>>,
+): Promise<void> {
+  return post<void>(`/api/v1/sessions/${sessionId}/messages/sync`, { messages });
 }

@@ -1,10 +1,7 @@
-"""
-配置管理模块
-"""
-
-from pydantic_settings import BaseSettings
 from functools import lru_cache
-from pathlib import Path
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -48,6 +45,20 @@ class Settings(BaseSettings):
     enable_case_search: bool = True
     enable_law_search: bool = True
     enable_document_export: bool = True
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug_value(cls, value):
+        """兼容常见运行模式字符串，避免环境变量导致启动失败。"""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on", "debug", "dev", "development"}:
+                return True
+            if normalized in {"0", "false", "no", "off", "release", "prod", "production"}:
+                return False
+        return value
     
     class Config:
         env_file = ".env"

@@ -2,16 +2,20 @@
 文档服务 - 处理文档生成和导出逻辑
 """
 
-from sqlalchemy.orm import Session
-from backend.db.models import Document, Session as SessionModel, Template
-from backend.config import get_settings
-from pathlib import Path
+import re
 import uuid
-from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
+
+from sqlalchemy.orm import Session
+
+from backend.config import get_settings
+from backend.db.models import Document, Session as SessionModel, Template
+from backend.utils.timezone import now_beijing
 
 
 settings = get_settings()
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class DocumentService:
@@ -50,7 +54,8 @@ class DocumentService:
         doc_id: str,
         status: str,
         file_url: str | None = None,
-        file_size: int | None = None
+        file_size: int | None = None,
+        content: str | None = None,
     ) -> Document:
         """更新文档状态"""
         doc = DocumentService.get_document(db, doc_id)
@@ -60,15 +65,127 @@ class DocumentService:
                 setattr(doc, "file_url", file_url)
             if file_size is not None:
                 setattr(doc, "file_size", file_size)
-            setattr(doc, "updated_at", datetime.now(timezone.utc))
+            if content is not None:
+                setattr(doc, "content", content)
+            setattr(doc, "updated_at", now_beijing())
             db.commit()
             db.refresh(doc)
         return doc
+
+    @staticmethod
+    def build_export_url(doc_id: str) -> str:
+        """构建统一的文档导出 API 路径。"""
+        return f"/api/v1/documents/{doc_id}/export"
+
+    @staticmethod
+    def parse_generated_document_payload(payload: str | None) -> dict[str, str]:
+        """
+        解析 Agent 文书工具返回文本，提取 filename/local_path/download_url。
+
+        支持格式示例：
+        - 文件名：legal_doc_xxx.docx
+        - 本地路径：generated_docs/legal_doc_xxx.docx
+        - 下载链接：http://127.0.0.1:8000/api/v1/download/legal_doc_xxx.docx
+        """
+        if not payload or not isinstance(payload, str):
+            return {}
+
+        result: dict[str, str] = {}
+
+        file_name_match = re.search(r"(?:文件名|filename)[：:]\s*([^\r\n]+?\.docx)", payload, re.IGNORECASE)
+        if file_name_match:
+            result["filename"] = file_name_match.group(1).strip()
+
+        local_path_match = re.search(r"(?:本地路径|local_path)[：:]\s*([^\r\n]+?\.docx)", payload, re.IGNORECASE)
+        if local_path_match:
+            result["local_path"] = local_path_match.group(1).strip()
+
+        download_match = re.search(r"(?:下载链接|download_url)[：:]\s*([^\r\n\s]+)", payload, re.IGNORECASE)
+        if download_match:
+            result["download_url"] = download_match.group(1).strip()
+
+        # 兼容直接保存为 URL/路径的场景，例如：
+        # /api/v1/download/legal_doc_xxx.docx
+        # http://127.0.0.1:8000/download/legal_doc_xxx.docx
+        direct_url_match = re.search(
+            r"(https?://[^\s]+?/(?:api/v1/)?download/([A-Za-z0-9._-]+\.docx))|((?:/api/v1/|/)?download/([A-Za-z0-9._-]+\.docx))",
+            payload,
+            re.IGNORECASE,
+        )
+        if direct_url_match and "download_url" not in result:
+            result["download_url"] = (direct_url_match.group(1) or direct_url_match.group(3) or "").strip()
+
+        if "filename" not in result:
+            if direct_url_match:
+                extracted_name = direct_url_match.group(2) or direct_url_match.group(4)
+                if extracted_name:
+                    result["filename"] = extracted_name.strip()
+            else:
+                loose_filename_match = re.search(r"([A-Za-z0-9._-]+\.docx)", payload)
+                if loose_filename_match:
+                    result["filename"] = loose_filename_match.group(1).strip()
+
+        if "local_path" not in result:
+            local_doc_path_match = re.search(
+                r"((?:[A-Za-z]:)?[^\r\n]*?generated_docs/[^\r\n\s]+?\.docx)",
+                payload,
+                re.IGNORECASE,
+            )
+            if local_doc_path_match:
+                result["local_path"] = local_doc_path_match.group(1).strip()
+
+        return result
+
+    @staticmethod
+    def _candidate_paths_from_payload(file_meta: dict[str, str]) -> list[Path]:
+        """根据 payload 解析结果构建本地候选路径。"""
+        candidates: list[Path] = []
+        file_name = file_meta.get("filename")
+        local_path = file_meta.get("local_path")
+
+        if local_path:
+            local_candidate = Path(local_path)
+            if local_candidate.is_absolute():
+                candidates.append(local_candidate)
+            else:
+                candidates.append((PROJECT_ROOT / local_candidate).resolve())
+
+        if file_name:
+            candidates.append((PROJECT_ROOT / "generated_docs" / file_name).resolve())
+
+            configured_storage = Path(settings.document_storage_path)
+            if configured_storage.is_absolute():
+                candidates.append((configured_storage / file_name).resolve())
+            else:
+                candidates.append((PROJECT_ROOT / configured_storage / file_name).resolve())
+
+        return candidates
+
+    @staticmethod
+    def resolve_generated_document_path(file_meta: dict[str, str]) -> Optional[Path]:
+        """从 payload 元数据中解析并验证文档实际文件路径。"""
+        for candidate in DocumentService._candidate_paths_from_payload(file_meta):
+            if candidate.exists() and candidate.is_file():
+                return candidate
+        return None
     
     @staticmethod
     def get_session_documents(db: Session, session_id: str) -> list:
         """获取会话的所有文档"""
         return db.query(Document).filter(Document.session_id == session_id).all()
+
+    @staticmethod
+    def get_latest_available_document(db: Session, session_id: str) -> Optional[Document]:
+        """获取会话中最近一个可导出的文档记录。"""
+        return (
+            db.query(Document)
+            .filter(
+                Document.session_id == session_id,
+                Document.status.in_(["generated", "exported"]),
+            )
+            .order_by(Document.updated_at.desc(), Document.created_at.desc())
+            .first()
+        )
     
     @staticmethod
     def mock_generate_document(

@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -98,7 +99,8 @@ def generate_legal_doc_tool(
 
     doc.save(str(file_path))
 
-    download_link = f"http://127.0.0.1:8000/download/{filename}"
+    download_base_url = os.getenv("DOCUMENT_DOWNLOAD_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+    download_link = f"{download_base_url}/api/v1/download/{filename}"
     return (
       "文书已生成成功。\n"
       f"文件名：{filename}\n"

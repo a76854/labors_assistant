@@ -4,9 +4,9 @@ SQLAlchemy ORM 数据库模型定义
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, Float, ForeignKey, JSON
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 import uuid
 from backend.db.database import Base
+from backend.utils.timezone import now_beijing
 
 
 class Session(Base):
@@ -23,8 +23,8 @@ class Session(Base):
     description = Column(Text, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
-    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, nullable=False, default=now_beijing, index=True)
+    updated_at = Column(DateTime, nullable=False, default=now_beijing, onupdate=now_beijing)
     
     # Relationships
     messages = relationship("Message", back_populates="session", cascade="all, delete-orphan")
@@ -48,7 +48,7 @@ class Message(Base):
     # Properties
     role = Column(String(20), nullable=False)  # "user", "assistant"
     content = Column(Text, nullable=False)
-    timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    timestamp = Column(DateTime, nullable=False, default=now_beijing, index=True)
     
     # Relationships
     session = relationship("Session", back_populates="messages")
@@ -78,8 +78,8 @@ class CaseElement(Base):
     confidence_score = Column(Float, nullable=True)  # 提取可信度 0.0-1.0
     
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, nullable=False, default=now_beijing)
+    updated_at = Column(DateTime, nullable=False, default=now_beijing, onupdate=now_beijing)
     
     # Relationships
     session = relationship("Session", back_populates="case_elements")
@@ -107,8 +107,8 @@ class Document(Base):
     file_size = Column(Integer, nullable=True)  # 文件大小（字节）
     
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, nullable=False, default=now_beijing)
+    updated_at = Column(DateTime, nullable=False, default=now_beijing, onupdate=now_beijing)
     
     # Relationships
     session = relationship("Session", back_populates="documents")
@@ -132,7 +132,7 @@ class Template(Base):
     example_content = Column(Text, nullable=True)  # 示例内容
     
     # Timestamps
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, nullable=False, default=now_beijing)
     
     def __repr__(self):
         return f"<Template(id={self.id}, name={self.name})>"

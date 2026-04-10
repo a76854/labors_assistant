@@ -2,7 +2,7 @@
  * 全局 TypeScript 类型定义
  */
 
-export type CaseType = 'wage_arrears' | 'labor_contract' | 'work_injury';
+export type CaseType = 'wage_arrears' | 'labor_contract' | 'work_injury' | 'other';
 
 export interface SessionCreateRequest {
   case_type: CaseType;
@@ -16,6 +16,30 @@ export interface SessionResponse {
   description?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface SessionListItem {
+  id: string;
+  case_type: string;
+  status: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+  last_message_preview?: string;
+  last_message_role?: 'user' | 'assistant';
+  last_message_at?: string;
+}
+
+export interface SessionListResponse {
+  sessions: SessionListItem[];
+  total: number;
+}
+
+export interface DocumentReadinessResponse {
+  ready: boolean;
+  missing_fields: string[];
+  collected_fields: Record<string, string>;
 }
 
 export interface MessageCreateRequest {
@@ -55,4 +79,3 @@ export interface DocumentResponse {
   created_at: string;
   updated_at: string;
 }
-

@@ -6,11 +6,13 @@ import { getDocument, exportDocument } from '../services/documentService';
 import MarkdownRenderer from '../components/MarkdownRenderer';
 import type { DocumentResponse } from '../types';
 import { ApiError } from '../services/request';
+import { formatBeijingDateTime } from '../utils/time';
 import './ResultPage.css';
 
 export default function ResultPage() {
   const { docId } = useParams<{ docId: string }>();
   const navigate = useNavigate();
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
   const [doc, setDoc] = useState<DocumentResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,10 +48,24 @@ export default function ResultPage() {
     setExporting(true);
     try {
       const res = await exportDocument(docId);
-      if (res && res.message) {
+      if (res?.download_url) {
+        const downloadUrl = res.download_url.startsWith('http')
+          ? res.download_url
+          : `${apiBaseUrl}${res.download_url}`;
+
+        const anchor = document.createElement('a');
+        anchor.href = downloadUrl;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        anchor.download = res.filename || '';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        message.success('已触发文书下载');
+      } else if (res?.message) {
         message.info(`下载状态: ${res.message}`);
       } else {
-        message.info('下载功能正在完善中，敬请期待');
+        message.error('暂未获取到可用的下载地址');
       }
     } catch (error: unknown) {
       if (error instanceof ApiError) {
@@ -140,14 +156,14 @@ export default function ResultPage() {
                     <span className="dot"></span>
                     创建时间
                   </div>
-                  <div className="info-value">{new Date(doc.created_at).toLocaleString()}</div>
+                  <div className="info-value">{formatBeijingDateTime(doc.created_at)}</div>
                 </div>
                 <div className="info-item">
                   <div className="info-label">
                     <span className="dot"></span>
                     更新时间
                   </div>
-                  <div className="info-value">{new Date(doc.updated_at).toLocaleString()}</div>
+                  <div className="info-value">{formatBeijingDateTime(doc.updated_at)}</div>
                 </div>
               </div>
 

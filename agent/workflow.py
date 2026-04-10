@@ -77,9 +77,63 @@ def _chunk_to_text(chunk: Any) -> str:
     return str(content) if content is not None else ""
 
 
+def _event_output_to_text(payload: Any) -> str:
+    """从 LangChain/LangGraph 事件输出中提取可展示的文本。"""
+    if payload is None:
+        return ""
+
+    if hasattr(payload, "content"):
+        return _chunk_to_text(payload)
+
+    if isinstance(payload, dict):
+        for key in ("output", "message", "chunk"):
+            text = _event_output_to_text(payload.get(key))
+            if text:
+                return text
+
+        content = payload.get("content")
+        if content is not None:
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                parts: List[str] = []
+                for item in content:
+                    if isinstance(item, str):
+                        parts.append(item)
+                    elif isinstance(item, dict):
+                        text = item.get("text") or item.get("content") or ""
+                        if isinstance(text, str):
+                            parts.append(text)
+                merged = "".join(parts)
+                if merged:
+                    return merged
+
+        generations = payload.get("generations")
+        if isinstance(generations, list):
+            parts = [_event_output_to_text(item) for item in generations]
+            return "".join(part for part in parts if part)
+
+        text = payload.get("text")
+        if isinstance(text, str):
+            return text
+
+        return ""
+
+    if isinstance(payload, list):
+        parts = [_event_output_to_text(item) for item in payload]
+        return "".join(part for part in parts if part)
+
+    text = getattr(payload, "text", None)
+    if isinstance(text, str):
+        return text
+
+    return ""
+
+
 async def run_agent_stream(user_input: str, thread_id: str) -> AsyncGenerator[str, None]:
     """FastAPI/SSE 对接入口：按 LangGraph v2 事件流输出 token 与工具事件。"""
     config = {"configurable": {"thread_id": thread_id}}
+    chat_model_stream_state: Dict[str, bool] = {}
     try:
         async for event in app.astream_events(
             {"messages": [("user", user_input)]},
@@ -90,15 +144,32 @@ async def run_agent_stream(user_input: str, thread_id: str) -> AsyncGenerator[st
                 continue
 
             event_type = event.get("event")
+            run_id = str(event.get("run_id") or "")
 
-            if event_type == "on_chat_model_stream":
+            if event_type == "on_chat_model_start":
+                if run_id:
+                    chat_model_stream_state[run_id] = False
+
+            elif event_type == "on_chat_model_stream":
                 data = event.get("data", {})
                 if not isinstance(data, dict):
                     data = {}
                 chunk = data.get("chunk")
                 token = _chunk_to_text(chunk)
                 if token:
+                    if run_id:
+                        chat_model_stream_state[run_id] = True
                     yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
+
+            elif event_type == "on_chat_model_end":
+                data = event.get("data", {})
+                if not isinstance(data, dict):
+                    data = {}
+                had_stream = chat_model_stream_state.pop(run_id, False) if run_id else False
+                if not had_stream:
+                    token = _event_output_to_text(data)
+                    if token:
+                        yield f"data: {json.dumps({'type': 'token', 'content': token}, ensure_ascii=False)}\n\n"
 
             elif event_type == "on_tool_start":
                 tool_name = event.get("name", "unknown_tool")
@@ -347,6 +418,6 @@ if __name__ == "__main__":
             print("\n\n感谢使用！再见。")
             break
         except Exception as exc:
-            print(f"\n❌ 错误: {str(exc)}\n")
+            print(f"\n[错误] {str(exc)}\n")
             print("═" * 70)
             print()
