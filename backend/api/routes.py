@@ -259,9 +259,11 @@ def generate_document(
             # 兜底：若本轮未拿到新文件，但会话中存在可用历史文书，则复用最近一份文件避免直接失败。
             latest_doc = DocumentService.get_latest_available_document(db, session_id)
             if latest_doc and str(getattr(latest_doc, "id", "")) != str(doc.id):
-                latest_meta = DocumentService.parse_generated_document_payload(
-                    getattr(latest_doc, "content", None) or getattr(latest_doc, "file_url", None)
-                )
+                latest_meta = DocumentService.parse_generated_document_payload(getattr(latest_doc, "content", None))
+                if "filename" not in latest_meta:
+                    latest_meta.update(
+                        DocumentService.parse_generated_document_payload(getattr(latest_doc, "file_url", None))
+                    )
                 latest_file_path = DocumentService.resolve_generated_document_path(latest_meta)
                 if latest_file_path:
                     DocumentService.update_document_status(
@@ -314,7 +316,9 @@ def export_document(
             detail="Document is not ready for export"
         )
 
-    file_meta = DocumentService.parse_generated_document_payload(getattr(doc, "content", None) or getattr(doc, "file_url", None))
+    file_meta = DocumentService.parse_generated_document_payload(getattr(doc, "content", None))
+    if "filename" not in file_meta:
+        file_meta.update(DocumentService.parse_generated_document_payload(getattr(doc, "file_url", None)))
     file_path = DocumentService.resolve_generated_document_path(file_meta)
     if not file_path:
         raise HTTPException(
