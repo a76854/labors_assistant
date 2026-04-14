@@ -10,6 +10,9 @@ from langchain_core.tools import tool
 from agent.state import LawsuitElementsSchema
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
 @tool(args_schema=LawsuitElementsSchema)
 def generate_legal_doc_tool(
   plaintiff: str,
@@ -38,7 +41,8 @@ def generate_legal_doc_tool(
     生成结果说明与模拟下载链接。
   """
   try:
-    output_dir = Path("./generated_docs")
+    # 固定保存到项目根目录，避免因启动目录不同导致后端下载接口找不到文件。
+    output_dir = PROJECT_ROOT / "generated_docs"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -105,7 +109,8 @@ def generate_legal_doc_tool(
       "文书已生成成功。\n"
       f"文件名：{filename}\n"
       f"本地路径：{file_path.as_posix()}\n"
-      f"下载链接：{download_link}"
+      f"下载链接：{download_link}\n"
+      f"点击下载：[{filename}]({download_link})"
     )
   except Exception as exc:
     return f"文书生成失败：{exc}"
