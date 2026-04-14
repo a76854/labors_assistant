@@ -196,6 +196,8 @@ def generate_document(
     db: Session = Depends(get_db)
 ):
     """生成诉状文档（实际文件由 agent/tools/doc_generator.py 产出）"""
+    user_friendly_content = "文书已生成成功，欢迎进行下载。"
+
     session = ChatService.get_session(db, session_id)
     if not session:
         raise HTTPException(
@@ -209,11 +211,11 @@ def generate_document(
         .filter(Message.session_id == session_id, Message.role == "user")
         .count()
     )
-    if user_message_count > 0 and not readiness.get("ready", False):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="助手尚未确认可以生成诉状。请继续咨询，直到回复中明确出现“请点击右上角生成诉状”。"
-        )
+
+    # 前端当前采用 Agent 直连流式模式，后端数据库中的就绪信号可能滞后。
+    # 因此不再阻断生成，仅保留 readiness 作为参考信息。
+    _ = readiness
+    _ = user_message_count
     
     try:
         # 创建文档记录（初始状态为 pending）
@@ -225,10 +227,12 @@ def generate_document(
         )
         
         # 调用 Agent 文书工具生成文件（doc_generator.py）
+        history_messages = ChatService.get_messages(db, session_id, limit=80, offset=0)
         generated_payload = AgentService.generate_document(
             session_id=session_id,
             case_type=str(session.case_type),
-            template_id=req.template_id
+            template_id=req.template_id,
+            messages=history_messages,
         )
 
         file_meta = DocumentService.parse_generated_document_payload(generated_payload)
@@ -240,9 +244,9 @@ def generate_document(
                 db,
                 str(doc.id),
                 status="generated",
-                file_url=DocumentService.build_export_url(str(doc.id)),
+                file_url=f"/api/v1/download/{generated_file_path.name}",
                 file_size=generated_file_path.stat().st_size,
-                content=generated_payload,
+                content=user_friendly_content,
             )
         else:
             DocumentService.update_document_status(
@@ -260,19 +264,13 @@ def generate_document(
                 )
                 latest_file_path = DocumentService.resolve_generated_document_path(latest_meta)
                 if latest_file_path:
-                    reuse_payload = (
-                        "文书已生成成功（复用本会话最近可用文书）。\n"
-                        f"文件名：{latest_file_path.name}\n"
-                        f"本地路径：{latest_file_path.as_posix()}\n"
-                        f"下载链接：/api/v1/download/{latest_file_path.name}"
-                    )
                     DocumentService.update_document_status(
                         db,
                         str(doc.id),
                         status="generated",
-                        file_url=DocumentService.build_export_url(str(doc.id)),
+                        file_url=f"/api/v1/download/{latest_file_path.name}",
                         file_size=latest_file_path.stat().st_size,
-                        content=reuse_payload,
+                        content=user_friendly_content,
                     )
         
         # 返回更新后的文档
