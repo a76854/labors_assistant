@@ -6,8 +6,15 @@
  */
 
 /** 后端 API 基础地址 */
+function getDefaultApiBaseUrl(port: number): string {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:${port}`;
+  }
+  return `http://127.0.0.1:${port}`;
+}
+
 const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl(8000);
 
 /** 自定义请求错误 */
 export class ApiError extends Error {

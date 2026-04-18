@@ -17,8 +17,8 @@ export default function App() {
     <ConfigProvider
       locale={zhCN}
       theme={{
-        // 默认使用暗色算法；布局组件内通过 data-theme 控制 CSS 变量
-        algorithm: antTheme.darkAlgorithm,
+        // 默认使用浅色算法；布局组件内通过 data-theme 控制 CSS 变量
+        algorithm: antTheme.defaultAlgorithm,
         token: {
           // 主题色
           colorPrimary: '#3b82f6',
@@ -30,9 +30,9 @@ export default function App() {
           fontFamily:
             '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Noto Sans SC", sans-serif',
           // 背景色
-          colorBgContainer: 'rgba(40, 40, 46, 0.75)',
-          colorBgElevated: '#282830',
-          colorBgLayout: '#141416',
+          colorBgContainer: 'rgba(255, 255, 255, 0.88)',
+          colorBgElevated: '#ffffff',
+          colorBgLayout: '#f5f5f7',
         },
         components: {
           Button: {
@@ -40,14 +40,14 @@ export default function App() {
             controlHeight: 40,
             controlHeightLG: 48,
             paddingContentHorizontal: 24,
-            defaultBg: 'rgba(255, 255, 255, 0.05)',
-            defaultBorderColor: 'rgba(255, 255, 255, 0.1)',
+            defaultBg: 'rgba(0, 0, 0, 0.03)',
+            defaultBorderColor: 'rgba(0, 0, 0, 0.08)',
           },
           Input: {
             // 输入框内阴影效果通过 CSS 补充
             controlHeight: 40,
-            colorBgContainer: 'rgba(0, 0, 0, 0.1)',
-            colorBorder: 'rgba(255, 255, 255, 0.08)',
+            colorBgContainer: '#ffffff',
+            colorBorder: 'rgba(0, 0, 0, 0.12)',
           },
           Card: {
             colorBgContainer: 'transparent',

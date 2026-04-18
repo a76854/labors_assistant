@@ -15,8 +15,15 @@ import type {
   ChatHistoryResponse,
 } from '../types';
 
+function getDefaultAgentBaseUrl(port: number): string {
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:${port}`;
+  }
+  return `http://127.0.0.1:${port}`;
+}
+
 const AGENT_BASE_URL: string =
-  import.meta.env.VITE_AGENT_BASE_URL || 'http://localhost:8001';
+  import.meta.env.VITE_AGENT_BASE_URL || getDefaultAgentBaseUrl(8001);
 const AGENT_CHAT_PATH: string =
   import.meta.env.VITE_AGENT_CHAT_PATH || '/chat';
 

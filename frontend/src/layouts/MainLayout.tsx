@@ -15,11 +15,11 @@ interface MainLayoutProps {
 export default function MainLayout({ children }: MainLayoutProps) {
   const navigate = useNavigate();
 
-  // 读取用户偏好或默认深色模式
+  // 读取用户偏好或默认浅色模式
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('app-theme');
     if (saved === 'light' || saved === 'dark') return saved;
-    return 'dark';
+    return 'light';
   });
 
   // 同步 data-theme 到 html 元素
