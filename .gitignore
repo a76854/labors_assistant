@@ -288,3 +288,4 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+run/

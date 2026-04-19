@@ -102,6 +102,11 @@ start-backend:
 	if [ -f $(BACKEND_PID_FILE) ] && kill -0 $$(cat $(BACKEND_PID_FILE)) 2>/dev/null; then \
 		echo "[start-backend] Already running (PID: $$(cat $(BACKEND_PID_FILE)))"; \
 	else \
+		if [ -f $(BACKEND_PID_FILE) ]; then rm -f $(BACKEND_PID_FILE); fi; \
+		if ss -ltn | awk '{print $$4}' | grep -Eq '[:.]$(BACKEND_PORT)$$'; then \
+			echo "[start-backend] Port $(BACKEND_PORT) already in use. Run make stop-backend and retry."; \
+			exit 1; \
+		fi; \
 		echo "[start-backend] Starting backend on :$(BACKEND_PORT) ..."; \
 		nohup $(VENV_BIN)/uvicorn backend.main:app --host 0.0.0.0 --port $(BACKEND_PORT) --workers 2 > $(LOG_DIR)/backend.log 2>&1 & echo $$! > $(BACKEND_PID_FILE); \
 		echo "[start-backend] PID: $$(cat $(BACKEND_PID_FILE))"; \
@@ -113,6 +118,11 @@ start-agent:
 	if [ -f $(AGENT_PID_FILE) ] && kill -0 $$(cat $(AGENT_PID_FILE)) 2>/dev/null; then \
 		echo "[start-agent] Already running (PID: $$(cat $(AGENT_PID_FILE)))"; \
 	else \
+		if [ -f $(AGENT_PID_FILE) ]; then rm -f $(AGENT_PID_FILE); fi; \
+		if ss -ltn | awk '{print $$4}' | grep -Eq '[:.]$(AGENT_PORT)$$'; then \
+			echo "[start-agent] Port $(AGENT_PORT) already in use. Run make stop-agent and retry."; \
+			exit 1; \
+		fi; \
 		echo "[start-agent] Starting agent on :$(AGENT_PORT) ..."; \
 		nohup $(VENV_BIN)/uvicorn agent.main:app --host 0.0.0.0 --port $(AGENT_PORT) --workers 1 > $(LOG_DIR)/agent.log 2>&1 & echo $$! > $(AGENT_PID_FILE); \
 		echo "[start-agent] PID: $$(cat $(AGENT_PID_FILE))"; \
@@ -135,23 +145,35 @@ stop: stop-frontend stop-agent stop-backend
 
 stop-backend:
 	@set -e; \
+	echo "[stop-backend] Cleaning backend processes ..."; \
 	if [ -f $(BACKEND_PID_FILE) ] && kill -0 $$(cat $(BACKEND_PID_FILE)) 2>/dev/null; then \
 		echo "[stop-backend] Stopping PID $$(cat $(BACKEND_PID_FILE))"; \
 		kill $$(cat $(BACKEND_PID_FILE)); \
-		rm -f $(BACKEND_PID_FILE); \
+		sleep 1; \
 	else \
-		echo "[stop-backend] Not running"; \
+		echo "[stop-backend] PID file missing or stale"; \
 	fi
+	@set -e; \
+	for pid in $$(pgrep -f "uvicorn backend.main:app" || true); do \
+		if [ "$$pid" != "$$$$" ]; then kill $$pid >/dev/null 2>&1 || true; fi; \
+	done
+	@rm -f $(BACKEND_PID_FILE)
 
 stop-agent:
 	@set -e; \
+	echo "[stop-agent] Cleaning agent processes ..."; \
 	if [ -f $(AGENT_PID_FILE) ] && kill -0 $$(cat $(AGENT_PID_FILE)) 2>/dev/null; then \
 		echo "[stop-agent] Stopping PID $$(cat $(AGENT_PID_FILE))"; \
 		kill $$(cat $(AGENT_PID_FILE)); \
-		rm -f $(AGENT_PID_FILE); \
+		sleep 1; \
 	else \
-		echo "[stop-agent] Not running"; \
+		echo "[stop-agent] PID file missing or stale"; \
 	fi
+	@set -e; \
+	for pid in $$(pgrep -f "uvicorn agent.main:app" || true); do \
+		if [ "$$pid" != "$$$$" ]; then kill $$pid >/dev/null 2>&1 || true; fi; \
+	done
+	@rm -f $(AGENT_PID_FILE)
 
 stop-frontend:
 	@set -e; \
@@ -176,9 +198,13 @@ restart: stop start
 
 status:
 	@echo "[status] backend:"; \
-	if [ -f $(BACKEND_PID_FILE) ] && kill -0 $$(cat $(BACKEND_PID_FILE)) 2>/dev/null; then echo "  running (PID $$(cat $(BACKEND_PID_FILE)))"; else echo "  stopped"; fi
+	if [ -f $(BACKEND_PID_FILE) ] && kill -0 $$(cat $(BACKEND_PID_FILE)) 2>/dev/null; then echo "  running (PID $$(cat $(BACKEND_PID_FILE)))"; \
+	elif ss -ltn | awk '{print $$4}' | grep -Eq '[:.]$(BACKEND_PORT)$$'; then echo "  running (port $(BACKEND_PORT), pid file stale)"; \
+	else echo "  stopped"; fi
 	@echo "[status] agent:"; \
-	if [ -f $(AGENT_PID_FILE) ] && kill -0 $$(cat $(AGENT_PID_FILE)) 2>/dev/null; then echo "  running (PID $$(cat $(AGENT_PID_FILE)))"; else echo "  stopped"; fi
+	if [ -f $(AGENT_PID_FILE) ] && kill -0 $$(cat $(AGENT_PID_FILE)) 2>/dev/null; then echo "  running (PID $$(cat $(AGENT_PID_FILE)))"; \
+	elif ss -ltn | awk '{print $$4}' | grep -Eq '[:.]$(AGENT_PORT)$$'; then echo "  running (port $(AGENT_PORT), pid file stale)"; \
+	else echo "  stopped"; fi
 	@echo "[status] frontend:"; \
 	if [ -f $(FRONTEND_PID_FILE) ] && kill -0 $$(cat $(FRONTEND_PID_FILE)) 2>/dev/null; then echo "  running (PID $$(cat $(FRONTEND_PID_FILE)))"; else echo "  stopped"; fi
 
