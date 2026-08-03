@@ -25,7 +25,7 @@ import type { SessionListItem, SessionResponse } from '@/services/chatService'
 import type { MessageResponse } from '@/services/chatService'
 import SessionHistoryPanel from '@/components/SessionHistoryPanel.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
-import { CASE_TYPE_MAP, CASE_TYPES, TOOL_HINTS, COMPLEXITY_MAP, LEAD_STATUS_MAP } from '@/constants'
+import { CASE_TYPE_MAP, CASE_TYPES, TOOL_HINTS, COMPLEXITY_MAP, LEAD_STATUS_MAP, formatRegion } from '@/constants'
 
 const route = useRoute()
 const router = useRouter()
@@ -331,7 +331,7 @@ async function handleNewSession() {
             <span class="chat-case-icon">{{ CASE_TYPE_MAP[caseType]?.icon || '⚖️' }}</span>
             <span>{{ CASE_TYPE_MAP[caseType]?.name || caseType }}</span>
             <n-tag v-if="session?.region" size="small" :bordered="false" type="info">
-              📍 {{ session.region }}
+              📍 {{ formatRegion(session.region) }}
             </n-tag>
           </div>
           <n-tooltip :disabled="canGenerateDoc">

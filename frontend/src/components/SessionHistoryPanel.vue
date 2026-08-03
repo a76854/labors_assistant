@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { NButton, NEmpty, NPopconfirm, NSkeleton, NTag } from 'naive-ui'
 import type { SessionListItem } from '@/services/chatService'
-import { CASE_TYPE_MAP } from '@/constants'
+import { CASE_TYPE_MAP, formatRegion } from '@/constants'
 
 const props = defineProps<{
   sessions: SessionListItem[]
@@ -52,7 +52,7 @@ const emit = defineEmits<{
             v-if="session.region"
             style="margin-left: auto"
           >
-            {{ session.region }}
+            {{ formatRegion(session.region) }}
           </n-tag>
         </div>
         <div v-if="session.last_message_preview" class="session-preview">

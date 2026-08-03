@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { NButton, NEmpty, NSkeleton, NTag, useMessage } from 'naive-ui'
 import { listMyLeads } from '@/services/lawyerService'
 import type { LeadListItem } from '@/services/lawyerService'
-import { CASE_TYPE_MAP, COMPLEXITY_MAP } from '@/constants'
+import { CASE_TYPE_MAP, COMPLEXITY_MAP, formatRegion } from '@/constants'
 
 const router = useRouter()
 const message = useMessage()
@@ -66,7 +66,7 @@ function openDetail(id: string) {
         <div class="case-main">
           <div class="case-top">
             <span class="case-name">{{ CASE_TYPE_MAP[lead.case_type]?.name || lead.case_type }}</span>
-            <n-tag v-if="lead.region" size="small" :bordered="false" type="info">📍 {{ lead.region }}</n-tag>
+            <n-tag v-if="lead.region" size="small" :bordered="false" type="info">📍 {{ formatRegion(lead.region) }}</n-tag>
             <n-tag
               size="small"
               :bordered="false"

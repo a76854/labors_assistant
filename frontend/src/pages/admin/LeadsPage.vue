@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { NEmpty, NSelect, NSkeleton, NTag, useMessage } from 'naive-ui'
 import { getAdminLeads } from '@/services/adminService'
 import type { AdminLead } from '@/services/adminService'
-import { CASE_TYPE_MAP, COMPLEXITY_MAP } from '@/constants'
+import { CASE_TYPE_MAP, COMPLEXITY_MAP, formatRegion } from '@/constants'
 
 const message = useMessage()
 
@@ -79,7 +79,7 @@ function formatTime(value: string): string {
         <span class="lead-case">
           {{ CASE_TYPE_MAP[lead.case_type]?.icon || '⚖️' }}
           {{ CASE_TYPE_MAP[lead.case_type]?.name || lead.case_type }}
-          <n-tag v-if="lead.region" size="tiny" :bordered="false" type="info">{{ lead.region }}</n-tag>
+          <n-tag v-if="lead.region" size="tiny" :bordered="false" type="info">{{ formatRegion(lead.region) }}</n-tag>
         </span>
         <span>
           <n-tag

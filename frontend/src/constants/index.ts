@@ -33,6 +33,24 @@ export const CASE_TYPE_MAP: Record<string, { name: string; icon: string }> = Obj
   CASE_TYPES.map((item) => [item.key, { name: item.name, icon: item.icon }]),
 )
 
+export const REGION_MAP: Record<string, string> = {
+  beijing: '北京',
+  shanghai: '上海',
+  guangdong: '广东',
+}
+
+/** 地区 key → 汉字，未知值原样返回 */
+export function formatRegion(region?: string | null): string {
+  if (!region) return '-'
+  return REGION_MAP[region] || region
+}
+
+/** 案件类型 key → 汉字，未知值原样返回 */
+export function formatCaseType(caseType?: string | null): string {
+  if (!caseType) return '其他'
+  return CASE_TYPE_MAP[caseType]?.name || caseType
+}
+
 export const DEFAULT_REGION = 'beijing'
 
 export const TOOL_HINTS: Record<string, string> = {

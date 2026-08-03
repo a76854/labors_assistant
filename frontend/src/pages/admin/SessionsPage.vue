@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { NEmpty, NSkeleton, NTag, useMessage } from 'naive-ui'
 import { getAdminSessions } from '@/services/adminService'
 import type { AdminSession } from '@/services/adminService'
-import { CASE_TYPE_MAP } from '@/constants'
+import { CASE_TYPE_MAP, formatRegion } from '@/constants'
 
 const message = useMessage()
 
@@ -63,7 +63,7 @@ function formatTime(value: string): string {
           {{ CASE_TYPE_MAP[session.case_type]?.icon || '⚖️' }}
           {{ CASE_TYPE_MAP[session.case_type]?.name || session.case_type }}
         </span>
-        <span>{{ session.region || '-' }}</span>
+        <span>{{ formatRegion(session.region) }}</span>
         <span>{{ session.user_username || '-' }}</span>
         <span>{{ session.message_count }}</span>
         <span>

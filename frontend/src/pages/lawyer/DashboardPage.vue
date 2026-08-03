@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { NButton, NEmpty, NProgress, NSkeleton, NTag, useMessage } from 'naive-ui'
 import { getRecommendations } from '@/services/lawyerService'
 import type { LeadRecommendation } from '@/services/lawyerService'
-import { CASE_TYPE_MAP } from '@/constants'
+import { CASE_TYPE_MAP, formatRegion } from '@/constants'
 
 const router = useRouter()
 const message = useMessage()
@@ -103,7 +103,7 @@ function openDetail(id: string) {
             <span class="rec-icon">{{ caseIconMap[rec.lead.case_type] || '⚖️' }}</span>
             <span class="rec-case-name">{{ CASE_TYPE_MAP[rec.lead.case_type]?.name || rec.lead.case_type }}</span>
             <n-tag v-if="rec.lead.region" size="small" :bordered="false" type="info">
-              📍 {{ rec.lead.region }}
+              📍 {{ formatRegion(rec.lead.region) }}
             </n-tag>
             <n-tag size="small" :bordered="false" :type="rec.lead.risk_score && rec.lead.risk_score >= 70 ? 'error' : rec.lead.risk_score && rec.lead.risk_score >= 45 ? 'warning' : 'success'">
               风险 {{ rec.lead.risk_score ?? '-' }}

@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { NEmpty, NSelect, NSkeleton, NTag, useMessage } from 'naive-ui'
 import { getAdminUsers } from '@/services/adminService'
 import type { AdminUser } from '@/services/adminService'
+import { CASE_TYPE_MAP, formatRegion } from '@/constants'
 
 const message = useMessage()
 
@@ -88,11 +89,11 @@ function formatTime(value: string): string {
           </n-tag>
         </span>
         <span>{{ user.name || '-' }}</span>
-        <span>{{ user.region || '-' }}</span>
+        <span>{{ formatRegion(user.region) }}</span>
         <span class="specialty-cell">
           <template v-if="user.specialty && user.specialty.length">
             <n-tag v-for="s in user.specialty" :key="s" size="tiny" :bordered="false" type="info">
-              {{ s }}
+              {{ CASE_TYPE_MAP[s]?.name || s }}
             </n-tag>
           </template>
           <span v-else>-</span>

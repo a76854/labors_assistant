@@ -16,7 +16,7 @@ import {
 } from 'naive-ui'
 import { claimLead, completeLead, getLawyerLead, requestMaterials } from '@/services/lawyerService'
 import type { LeadDetail } from '@/services/lawyerService'
-import { CASE_TYPE_MAP, COMPLEXITY_MAP, LEAD_STATUS_MAP } from '@/constants'
+import { CASE_TYPE_MAP, COMPLEXITY_MAP, LEAD_STATUS_MAP, formatRegion } from '@/constants'
 
 const route = useRoute()
 const router = useRouter()
@@ -167,7 +167,7 @@ const materialRequests = computed(() => lead.value?.material_requests || [])
               {{ lead.user_username || '-' }}
               <span v-if="lead.user_phone" class="phone-mask">({{ lead.user_phone }})</span>
             </n-descriptions-item>
-            <n-descriptions-item label="地区">📍 {{ lead.region || '-' }}</n-descriptions-item>
+            <n-descriptions-item label="地区">📍 {{ formatRegion(lead.region) }}</n-descriptions-item>
           </n-descriptions>
 
           <div class="score-row">

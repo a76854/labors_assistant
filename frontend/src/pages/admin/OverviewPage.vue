@@ -53,7 +53,6 @@ const cards = () => {
         </div>
       </div>
     </n-spin>
-
   </div>
 </template>
 
