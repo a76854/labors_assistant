@@ -62,50 +62,21 @@
 | **案例查询** | 检索相似案例，参考判决结构 | Agent | 4月18日 |
 | **用户账户** | 简单的用户注册和登录 | 后端 | 4月18日 |
 
-### P2 平台化扩展（当前版本已实现）
+### P2 平台化扩展
 | 功能 | 说明 |
 |------|------|
-| **用户系统** | 劳动者/律师双角色注册登录，JWT 认证，会话按用户隔离 |
+| **用户系统** | 劳动者/律师/超级管理员三角色，JWT 认证，会话按用户隔离 |
 | **地区规则适配** | 北京/上海/广东 3 地区模板切换，文书受理机构按地区渲染 |
 | **案件分诊** | 规则启发式证据完整度/风险评分（0-100），缺失证据清单，复杂度分级 |
-| **律师推荐** | 按案由+地区从律师库推荐，复杂案件自动引导律师介入 |
-| **律师后台** | 待接单线索列表（按风险排序）、接单、一键发起补充材料请求 |
-| **线索闭环** | 咨询 → 分诊 → 发布线索 → 律师接单 → 补充材料 → 完成
+| **智能推荐** | 按律师专长+地区自动匹配线索，匹配度评分+推荐理由，非全量展示 |
+| **律师工作台** | 系统推荐线索首页 / 线索市场 / 我的接单 / 接单 / 一键补材料 |
+| **超级管理后台** | 全平台数据概览、用户/线索/会话管理 |
 
 ---
 
 ## 系统架构
 
 ![系统架构](img/architecture.png)
-
-## 👥 团队分工
-
-|业务|核心任务|框架|交付物|
-|:--:|--|--|--|
-|后端|FastAPI架构、数据库、接口设计| FastAPI主框架、数据库、会话管理、API文档 | API Swagger文档、单元测试 |
-|agent|LangGraph工作流、LLM调优、Prompt、RAG接入| LangGraph工作流、Prompt编写、RAG集成 | 工作流验收文档、Prompt库 |
-|前端|React界面、对话组件、文件下载| React项目、对话UI、表单、集成后端 | UI原型、功能演示 |
-|文档系统|Word模板、python-docx、格式渲染| 诉讼模板设计、python-docx、质量验证 | 3+诉状模板、导出样本 |
-|测试运维|测试用例、部署、文档、辅助开发| CI/CD、集成测试、部署、演示 | 测试报告、部署指南、Demo视频 |
-
-**协作规则**：
-- 代码审查：每个PR需1名不同模块评审人
-- 周会讨论：每周一次集成进度检查
-- 文档同步：模块间接口文档保持最新
-
----
-
-## 📅 开发里程碑
-
-| 时间 | 里程碑 | 验收标准 |
-|------|------|--------|
-| **3月30日** | ✅ API设计冻结 | 所有接口清晰定义，无歧义 |
-| **4月6日** | ✅ 端到端可跑通 | 用mock数据完整跑通全链路 |
-| **4月10日** | ✅ Alpha版本 | 接入赛方API，生成3个真实样例 |
-| **4月13日** | ✅ Beta版本 | 完整UI、无critical bug |
-| **4月18日** | 🚀 **最终提交** | 源代码 + 演示视频 + 部署指南 |
-
----
 
 ## 💻 技术栈
 
@@ -171,25 +142,14 @@ curl http://localhost:8000/api/health
 | 角色 | 用户名 | 密码 | 用途 |
 |------|--------|------|------|
 | 劳动者 | `worker_demo` | `demo123456` | 体验咨询→分诊→发布线索→补充材料 |
-| 律师 | `lawyer_demo` | `demo123456` | 体验律师后台：线索列表→接单→一键补材料 |
-
-### 运行冒烟测试
-```bash
-.venv/bin/python scripts/test_api.py   # 全链路：登录→对话→分诊→接单→补材料
-```
+| 律师 | `lawyer01` ~ `lawyer10` | `demo123456` | 体验律师工作台：系统推荐→接单→一键补材料 |
+| 管理员 | `admin` | `admin123456` | 体验平台管理后台：数据概览/用户/线索/会话 |
 
 ### 运行测试
 ```bash
 .venv/bin/python scripts/test_api.py   # 后端+Agent 全链路冒烟测试
 cd frontend && npm run lint            # 前端 lint
 cd frontend && npm run build           # 前端类型检查 + 构建
-```
-
-### 部署到云环境
-```bash
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d
-docker logs -f labors-backend
 ```
 
 ---
@@ -231,44 +191,3 @@ labors_assistant/
 │
 └── generated_docs/          # 生成的 .docx 文书
 ```
-
----
-
-## 🔄 Git工作流
-
-### 分支策略
-```
-main (稳定发布) ← dev (开发主分支) ← feature/{模块}/{功能}
-```
-
-### 创建特性分支
-```bash
-git checkout -b feature/backend/session-management dev
-git checkout -b feature/agent/intent-classification dev
-git checkout -b feature/frontend/chat-ui dev
-```
-
-### Commit规范
-```
-<type>(<scope>): <subject>
-
-<body>
-<footer>
-```
-
-**类型定义**：`feat` | `fix` | `refactor` | `test` | `docs` | `chore`
-
----
-
-## 🧪 质量标准
-
-### 性能基准
-```
-API响应 (非LLM):  <100ms
-前端加载:         <3s
-诉状导出:         <5s
-RAG检索:          <2s
-```
-
-### 代码覆盖率
-- 后端：>=70%  |  前端：>=50%  |  Agent：>=60%

@@ -6,8 +6,6 @@ import {
   NForm,
   NFormItem,
   NInput,
-  NRadio,
-  NRadioGroup,
   useMessage,
 } from 'naive-ui'
 import { login } from '@/services/authService'
@@ -18,7 +16,7 @@ const route = useRoute()
 const message = useMessage()
 const auth = useAuthStore()
 
-const form = ref({ username: 'worker_demo', password: 'demo123456', role: 'user' })
+const form = ref({ username: 'worker_demo', password: 'demo123456' })
 const loading = ref(false)
 
 async function handleLogin() {
@@ -31,8 +29,19 @@ async function handleLogin() {
     const data = await login(form.value.username, form.value.password)
     auth.setAuth(data.access_token, data.user)
     message.success('登录成功')
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-    router.push(redirect)
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
+    if (redirect) {
+      router.push(redirect)
+      return
+    }
+    // 角色分流：律师进工作台，管理员进后台，劳动者进首页
+    if (data.user.role === 'lawyer') {
+      router.push('/lawyer/dashboard')
+    } else if (data.user.role === 'admin') {
+      router.push('/admin/overview')
+    } else {
+      router.push('/')
+    }
   } catch (error) {
     message.error(error instanceof Error ? error.message : '登录失败')
   } finally {
@@ -40,9 +49,8 @@ async function handleLogin() {
   }
 }
 
-function fillDemo(role: 'user' | 'lawyer') {
-  form.value.role = role
-  form.value.username = role === 'lawyer' ? 'lawyer_demo' : 'worker_demo'
+function fillDemo(username: string) {
+  form.value.username = username
   form.value.password = 'demo123456'
 }
 </script>
@@ -57,12 +65,6 @@ function fillDemo(role: 'user' | 'lawyer') {
       </div>
 
       <n-form :model="form" label-placement="top" size="large" @keyup.enter="handleLogin">
-        <n-form-item label="角色">
-          <n-radio-group v-model:value="form.role">
-            <n-radio value="user">劳动者</n-radio>
-            <n-radio value="lawyer">律师</n-radio>
-          </n-radio-group>
-        </n-form-item>
         <n-form-item label="用户名">
           <n-input v-model:value="form.username" placeholder="请输入用户名" />
         </n-form-item>
@@ -83,8 +85,9 @@ function fillDemo(role: 'user' | 'lawyer') {
         演示账号快捷填充
       </n-divider>
       <div class="demo-accounts">
-        <n-button size="small" quaternary @click="fillDemo('user')">👷 劳动者演示账号</n-button>
-        <n-button size="small" quaternary @click="fillDemo('lawyer')">⚖️ 律师演示账号</n-button>
+        <n-button size="small" quaternary @click="fillDemo('worker_demo')">👷 劳动者演示账号</n-button>
+        <n-button size="small" quaternary @click="fillDemo('lawyer01')">⚖️ 律师演示账号</n-button>
+        <n-button size="small" quaternary @click="fillDemo('admin')">🛡️ 管理员演示账号</n-button>
       </div>
     </div>
   </div>

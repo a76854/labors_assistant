@@ -120,13 +120,13 @@ const materialRequests = computed(() => lead.value?.material_requests || [])
 <template>
   <div class="lead-detail fade-in">
     <div class="detail-nav">
-      <n-button size="small" quaternary @click="router.push('/lawyer/leads')">← 返回线索列表</n-button>
+      <n-button size="small" quaternary @click="router.back()">← 返回线索列表</n-button>
     </div>
 
     <n-spin :show="loading">
       <n-empty v-if="notFound" description="线索不存在">
         <template #extra>
-          <n-button type="primary" @click="router.push('/lawyer/leads')">返回列表</n-button>
+          <n-button type="primary" @click="router.back()">返回列表</n-button>
         </template>
       </n-empty>
 

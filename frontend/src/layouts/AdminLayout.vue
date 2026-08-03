@@ -16,45 +16,52 @@ function handleLogout() {
 </script>
 
 <template>
-  <div class="lawyer-layout">
-    <aside class="lawyer-sidebar glass-card">
+  <div class="admin-layout">
+    <aside class="admin-sidebar glass-card">
       <div class="sidebar-brand">
-        <span class="sidebar-logo">⚖️</span>
+        <span class="sidebar-logo">🛡️</span>
         <div>
-          <div class="sidebar-title">律师工作台</div>
-          <div class="sidebar-sub">{{ auth.user?.name || auth.user?.username }}</div>
+          <div class="sidebar-title">平台管理后台</div>
+          <div class="sidebar-sub">超级管理员</div>
         </div>
       </div>
       <nav class="sidebar-nav">
         <div
           class="nav-item"
-          :class="{ active: route.path.startsWith('/lawyer/dashboard') }"
-          @click="router.push('/lawyer/dashboard')"
+          :class="{ active: route.path.startsWith('/admin/overview') }"
+          @click="router.push('/admin/overview')"
         >
-          🎯 推荐线索
+          📊 数据概览
         </div>
         <div
           class="nav-item"
-          :class="{ active: route.path.startsWith('/lawyer/market') }"
-          @click="router.push('/lawyer/market')"
+          :class="{ active: route.path.startsWith('/admin/users') }"
+          @click="router.push('/admin/users')"
         >
-          📋 线索市场
+          👥 用户管理
         </div>
         <div
           class="nav-item"
-          :class="{ active: route.path.startsWith('/lawyer/my-cases') }"
-          @click="router.push('/lawyer/my-cases')"
+          :class="{ active: route.path.startsWith('/admin/leads') }"
+          @click="router.push('/admin/leads')"
         >
-          📁 我的接单
+          📥 线索管理
+        </div>
+        <div
+          class="nav-item"
+          :class="{ active: route.path.startsWith('/admin/sessions') }"
+          @click="router.push('/admin/sessions')"
+        >
+          💬 会话记录
         </div>
       </nav>
       <div class="sidebar-footer">
         <n-button size="small" quaternary block @click="handleLogout">🚪 退出登录</n-button>
       </div>
     </aside>
-    <main class="lawyer-main">
-      <header class="lawyer-toolbar glass-card">
-        <span>律师后台</span>
+    <main class="admin-main">
+      <header class="admin-toolbar glass-card">
+        <span>平台管理后台 · {{ auth.user?.name || auth.user?.username }}</span>
         <n-button quaternary circle @click="themeStore.toggle()">
           {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
         </n-button>
@@ -65,7 +72,7 @@ function handleLogout() {
 </template>
 
 <style scoped>
-.lawyer-layout {
+.admin-layout {
   display: grid;
   grid-template-columns: 230px 1fr;
   gap: 20px;
@@ -74,11 +81,11 @@ function handleLogout() {
   padding: 20px 24px;
 }
 @media (max-width: 900px) {
-  .lawyer-layout {
+  .admin-layout {
     grid-template-columns: 1fr;
   }
 }
-.lawyer-sidebar {
+.admin-sidebar {
   padding: 18px 14px;
   align-self: start;
   position: sticky;
@@ -107,6 +114,9 @@ function handleLogout() {
 }
 .sidebar-nav {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .nav-item {
   padding: 11px 12px;
@@ -128,7 +138,7 @@ function handleLogout() {
   flex-direction: column;
   gap: 4px;
 }
-.lawyer-toolbar {
+.admin-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -137,7 +147,7 @@ function handleLogout() {
   font-weight: 700;
   border-radius: 12px;
 }
-.lawyer-main {
+.admin-main {
   min-width: 0;
 }
 </style>

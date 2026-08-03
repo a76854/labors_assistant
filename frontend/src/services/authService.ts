@@ -16,6 +16,8 @@ export interface RegisterPayload {
   role: 'user' | 'lawyer'
   name?: string
   phone?: string
+  specialty?: string[]
+  region?: string
 }
 
 export function register(data: RegisterPayload): Promise<TokenResponse> {

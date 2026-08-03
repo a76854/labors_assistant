@@ -19,9 +19,11 @@ class User(Base):
     # Properties
     username = Column(String(50), nullable=False, unique=True, index=True)
     password_hash = Column(String(200), nullable=False)
-    role = Column(String(20), nullable=False, default="user")  # "user" | "lawyer"
+    role = Column(String(20), nullable=False, default="user")  # "user" | "lawyer" | "admin"
     name = Column(String(50), nullable=True)
     phone = Column(String(20), nullable=True)
+    specialty = Column(JSON, nullable=True)  # 律师擅长案由 ["wage_arrears", ...]
+    region = Column(String(50), nullable=True)  # 律师所在地区
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=now_beijing)

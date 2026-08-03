@@ -1,5 +1,5 @@
 """
-律师后台路由 - 待接单线索 / 接单 / 补充材料请求
+律师后台路由 - 推荐线索 / 线索市场 / 我的接单 / 接单 / 补充材料请求
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,6 +9,8 @@ from backend.api.schema import (
     LeadActionResponse,
     LeadDetailResponse,
     LeadListResponse,
+    LeadMarketListResponse,
+    LeadRecommendationListResponse,
     MaterialRequestCreate,
     MaterialRequestResponse,
 )
@@ -16,6 +18,7 @@ from backend.db.database import get_db
 from backend.db.models import Lead, MaterialRequest, User
 from backend.services.auth import get_current_lawyer
 from backend.services.chat import ChatService
+from backend.services.recommendation import RecommendationService
 from backend.services.triage import TriageService
 
 router = APIRouter(prefix="/api/v1/lawyer", tags=["lawyer"])
@@ -40,22 +43,56 @@ def _get_lead_or_404(db: Session, lead_id: str) -> Lead:
     return lead
 
 
-@router.get("/leads", response_model=LeadListResponse)
-def list_leads(
+@router.get("/recommendations", response_model=LeadRecommendationListResponse)
+def recommend_leads(
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    lawyer: User = Depends(get_current_lawyer),
+):
+    """系统推荐线索：按律师专长/地区自动匹配，非全量展示。"""
+    recommendations = RecommendationService.recommend_leads(db, lawyer, limit=limit)
+    items = [
+        {
+            "lead": item,
+            "match_score": item["match_score"],
+            "reasons": item["reasons"],
+            "recommended": item["recommended"],
+        }
+        for item in recommendations
+    ]
+    return LeadRecommendationListResponse(
+        recommendations=items,
+        total=len(items),
+    )
+
+
+@router.get("/leads", response_model=LeadMarketListResponse)
+def list_lead_market(
     status_filter: str | None = None,
-    limit: int = 50,
+    limit: int = 100,
     offset: int = 0,
     db: Session = Depends(get_db),
     lawyer: User = Depends(get_current_lawyer),
 ):
-    """待接单线索列表，按风险评分倒序。"""
-    query = db.query(Lead)
-    if status_filter:
-        query = query.filter(Lead.status == status_filter)
+    """线索市场：全部线索（按风险倒序），供律师浏览补充。"""
+    leads, total = RecommendationService.market_leads(
+        db, status_filter=status_filter, limit=limit, offset=offset
+    )
+    return LeadMarketListResponse(leads=leads, total=total)
 
+
+@router.get("/my-leads", response_model=LeadListResponse)
+def my_leads(
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    lawyer: User = Depends(get_current_lawyer),
+):
+    """我的接单：当前律师已接单/已完成的线索。"""
+    query = db.query(Lead).filter(Lead.lawyer_id == lawyer.id)
     total = query.count()
     leads = (
-        query.order_by(Lead.risk_score.desc(), Lead.created_at.desc())
+        query.order_by(Lead.updated_at.desc())
         .offset(offset)
         .limit(limit)
         .all()
@@ -63,21 +100,8 @@ def list_leads(
 
     items = []
     for lead in leads:
-        item = {
-            "id": lead.id,
-            "session_id": lead.session_id,
-            "status": lead.status,
-            "case_type": lead.case_type,
-            "region": lead.region,
-            "evidence_score": lead.evidence_score,
-            "risk_score": lead.risk_score,
-            "complexity": lead.complexity,
-            "missing_evidence": lead.missing_evidence or [],
-            "summary": lead.summary,
-            "created_at": lead.created_at,
-            "updated_at": lead.updated_at,
-            "material_request_count": len(lead.material_requests),
-        }
+        item = RecommendationService._lead_to_dict(db, lead, lawyer)
+        item["lawyer_username"] = None
         items.append(item)
 
     return LeadListResponse(leads=items, total=total)
@@ -163,6 +187,11 @@ def request_materials(
 ):
     """一键发起补充材料请求。"""
     lead = _get_lead_or_404(db, lead_id)
+    if lead.lawyer_id != lawyer.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="仅接单律师可发起补充材料请求",
+        )
 
     items = [{"name": item["name"], "description": item.get("description", ""), "status": "pending"} for item in req.items]
     material_request = MaterialRequest(
@@ -186,6 +215,11 @@ def complete_lead(
 ):
     """标记案件完成。"""
     lead = _get_lead_or_404(db, lead_id)
+    if lead.lawyer_id != lawyer.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="仅接单律师可操作",
+        )
     lead.status = "completed"
     db.commit()
     db.refresh(lead)

@@ -1,13 +1,24 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NForm, NFormItem, NInput, NRadio, NRadioGroup, useMessage } from 'naive-ui'
+import { NButton, NForm, NFormItem, NInput, NRadio, NRadioGroup, NSelect, useMessage } from 'naive-ui'
 import { register } from '@/services/authService'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
+
+const specialtyOptions = [
+  { label: '劳动报酬纠纷', value: 'wage_arrears' },
+  { label: '劳动合同争议', value: 'labor_contract' },
+  { label: '工伤赔偿', value: 'work_injury' },
+]
+const regionOptions = [
+  { label: '北京', value: 'beijing' },
+  { label: '上海', value: 'shanghai' },
+  { label: '广东', value: 'guangdong' },
+]
 
 const form = ref({
   username: '',
@@ -16,6 +27,8 @@ const form = ref({
   role: 'user' as 'user' | 'lawyer',
   name: '',
   phone: '',
+  specialty: [] as string[],
+  region: null as string | null,
 })
 const loading = ref(false)
 
@@ -32,6 +45,10 @@ async function handleRegister() {
     message.warning('两次输入的密码不一致')
     return
   }
+  if (form.value.role === 'lawyer' && form.value.specialty.length === 0) {
+    message.warning('请选择至少一个擅长领域')
+    return
+  }
   loading.value = true
   try {
     const data = await register({
@@ -40,10 +57,12 @@ async function handleRegister() {
       role: form.value.role,
       name: form.value.name || undefined,
       phone: form.value.phone || undefined,
+      specialty: form.value.role === 'lawyer' ? form.value.specialty : undefined,
+      region: form.value.role === 'lawyer' ? form.value.region || undefined : undefined,
     })
     auth.setAuth(data.access_token, data.user)
     message.success('注册成功')
-    router.push('/')
+    router.push(data.user.role === 'lawyer' ? '/lawyer/dashboard' : '/')
   } catch (error) {
     message.error(error instanceof Error ? error.message : '注册失败')
   } finally {
@@ -83,6 +102,25 @@ async function handleRegister() {
         <n-form-item label="联系电话（选填）">
           <n-input v-model:value="form.phone" placeholder="用于律师与您联系" />
         </n-form-item>
+
+        <template v-if="form.role === 'lawyer'">
+          <n-form-item label="擅长领域（决定系统推荐匹配）">
+            <n-select
+              v-model:value="form.specialty"
+              :options="specialtyOptions"
+              multiple
+              placeholder="选择擅长领域，系统将优先推荐对应案件"
+            />
+          </n-form-item>
+          <n-form-item label="所在地区（决定地区匹配）">
+            <n-select
+              v-model:value="form.region"
+              :options="regionOptions"
+              placeholder="选择所在地区，优先推荐本地案件"
+            />
+          </n-form-item>
+        </template>
+
         <n-button type="primary" block size="large" :loading="loading" @click="handleRegister">
           注 册
         </n-button>
@@ -108,7 +146,7 @@ async function handleRegister() {
 }
 .auth-card {
   width: 100%;
-  max-width: 420px;
+  max-width: 440px;
   padding: 36px 32px;
 }
 .auth-brand {

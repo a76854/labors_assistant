@@ -4,9 +4,11 @@ import { ref, computed } from 'vue'
 export interface UserInfo {
   id: string
   username: string
-  role: 'user' | 'lawyer'
+  role: 'user' | 'lawyer' | 'admin'
   name?: string | null
   phone?: string | null
+  specialty?: string[] | null
+  region?: string | null
   created_at: string
 }
 
@@ -29,6 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!token.value)
   const isLawyer = computed(() => user.value?.role === 'lawyer')
+  const isAdmin = computed(() => user.value?.role === 'admin')
 
   function setAuth(newToken: string, newUser: UserInfo) {
     token.value = newToken
@@ -49,5 +52,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(USER_KEY)
   }
 
-  return { token, user, isLoggedIn, isLawyer, setAuth, setUser, logout }
+  return { token, user, isLoggedIn, isLawyer, isAdmin, setAuth, setUser, logout }
 })

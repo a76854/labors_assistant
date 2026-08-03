@@ -81,6 +81,8 @@ def migrate_columns():
     checks = [
         ("sessions", "region", "VARCHAR(50)"),
         ("templates", "region", "VARCHAR(50)"),
+        ("users", "specialty", "JSON"),
+        ("users", "region", "VARCHAR(50)"),
     ]
     with engine.begin() as conn:
         for table, column, col_type in checks:
@@ -154,33 +156,49 @@ def init_demo_users():
             "name": "演示劳动者",
             "phone": "13900139000",
         },
+        {
+            "username": "admin",
+            "password": "admin123456",
+            "role": "admin",
+            "name": "超级管理员",
+            "phone": "",
+        },
     ]
 
-    # 10 个假律师账号（演示用）
-    fake_lawyer_names = [
-        ("lawyer01", "陈志远", "13800138001"),
-        ("lawyer02", "李婉晴", "13800138002"),
-        ("lawyer03", "王建国", "13800138003"),
-        ("lawyer04", "赵敏", "13800138004"),
-        ("lawyer05", "孙德胜", "13800138005"),
-        ("lawyer06", "周静", "13800138006"),
-        ("lawyer07", "吴振华", "13800138007"),
-        ("lawyer08", "郑丽娜", "13800138008"),
-        ("lawyer09", "钱永强", "13800138009"),
-        ("lawyer10", "冯雪", "13800138010"),
+    # 10 个假律师账号（演示用），按专长/地区分布
+    fake_lawyers = [
+        ("lawyer01", "陈志远", "13800138001", ["wage_arrears", "labor_contract"], "beijing"),
+        ("lawyer02", "李婉晴", "13800138002", ["labor_contract", "wage_arrears"], "shanghai"),
+        ("lawyer03", "王建国", "13800138003", ["work_injury", "wage_arrears"], "guangdong"),
+        ("lawyer04", "赵敏", "13800138004", ["wage_arrears", "work_injury"], "beijing"),
+        ("lawyer05", "孙德胜", "13800138005", ["wage_arrears", "labor_contract", "work_injury"], "shanghai"),
+        ("lawyer06", "周静", "13800138006", ["labor_contract"], "guangdong"),
+        ("lawyer07", "吴振华", "13800138007", ["wage_arrears"], "beijing"),
+        ("lawyer08", "郑丽娜", "13800138008", ["labor_contract", "work_injury"], "shanghai"),
+        ("lawyer09", "钱永强", "13800138009", ["work_injury"], "guangdong"),
+        ("lawyer10", "冯雪", "13800138010", ["wage_arrears", "labor_contract"], "beijing"),
     ]
-    for username, name, phone in fake_lawyer_names:
+    for username, name, phone, specialty, region in fake_lawyers:
         demo_users.append({
             "username": username,
             "password": "demo123456",
             "role": "lawyer",
             "name": f"{name}（律师）",
             "phone": phone,
+            "specialty": specialty,
+            "region": region,
         })
 
     for data in demo_users:
         existing = db.query(User).filter(User.username == data["username"]).first()
         if existing:
+            # 已有账号：补齐律师专长/地区（幂等更新）
+            if data.get("specialty") is not None and not existing.specialty:
+                existing.specialty = data["specialty"]
+                db.add(existing)
+            if data.get("region") and not existing.region:
+                existing.region = data["region"]
+                db.add(existing)
             print(f"  ℹ Demo user exists: {data['username']}")
             continue
         user = User(
@@ -189,6 +207,8 @@ def init_demo_users():
             role=data["role"],
             name=data["name"],
             phone=data["phone"],
+            specialty=data.get("specialty"),
+            region=data.get("region"),
         )
         db.add(user)
         print(f"  ✓ Added demo user: {data['username']} ({data['role']})")

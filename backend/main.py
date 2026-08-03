@@ -10,6 +10,7 @@ from backend.api.routes import router
 from backend.api.auth_routes import router as auth_router
 from backend.api.triage_routes import router as triage_router
 from backend.api.lawyer_routes import router as lawyer_router
+from backend.api.admin_routes import router as admin_router
 
 # 初始化设置
 settings = get_settings()
@@ -63,6 +64,7 @@ app.include_router(router)
 app.include_router(auth_router)
 app.include_router(triage_router)
 app.include_router(lawyer_router)
+app.include_router(admin_router)
 
 
 # ============================================================================

@@ -12,7 +12,10 @@ const themeStore = useThemeStore()
 const userOptions = computed(() => {
   const options: Array<{ label: string; key: string }> = [{ label: '退出登录', key: 'logout' }]
   if (auth.isLawyer) {
-    options.unshift({ label: '⚖️ 律师后台', key: 'lawyer' })
+    options.unshift({ label: '⚖️ 律师工作台', key: 'lawyer' })
+  }
+  if (auth.isAdmin) {
+    options.unshift({ label: '🛡️ 管理后台', key: 'admin' })
   }
   return options
 })
@@ -22,7 +25,9 @@ function handleUserAction(key: string) {
     auth.logout()
     router.push('/login')
   } else if (key === 'lawyer') {
-    router.push('/lawyer/leads')
+    router.push('/lawyer/dashboard')
+  } else if (key === 'admin') {
+    router.push('/admin/overview')
   }
 }
 
@@ -55,8 +60,8 @@ function goHome() {
                   <span>👤</span>
                 </n-icon>
                 <span class="user-name">{{ auth.user?.username }}</span>
-                <span class="user-role-tag" :class="auth.isLawyer ? 'lawyer' : 'worker'">
-                  {{ auth.isLawyer ? '律师' : '劳动者' }}
+                <span class="user-role-tag" :class="auth.isLawyer ? 'lawyer' : auth.isAdmin ? 'admin' : 'worker'">
+                  {{ auth.isLawyer ? '律师' : auth.isAdmin ? '管理员' : '劳动者' }}
                 </span>
               </n-button>
             </n-dropdown>
@@ -137,6 +142,10 @@ function goHome() {
 .user-role-tag.lawyer {
   background: rgba(59, 130, 246, 0.18);
   color: #60a5fa;
+}
+.user-role-tag.admin {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
 }
 .user-role-tag.worker {
   background: rgba(16, 185, 129, 0.16);

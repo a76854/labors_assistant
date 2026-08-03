@@ -45,6 +45,8 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         role=req.role,
         name=req.name,
         phone=req.phone,
+        specialty=req.specialty,
+        region=req.region,
     )
     db.add(user)
     db.commit()

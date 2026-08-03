@@ -91,9 +91,22 @@ export function listRegions(): Promise<{ regions: RegionInfo[] }> {
 // 律师后台
 // ============================================================================
 
+export interface LeadRecommendation {
+  lead: LeadListItem
+  match_score: number
+  reasons: string[]
+  recommended: boolean
+}
+
+export function getRecommendations(limit = 20): Promise<{ recommendations: LeadRecommendation[]; total: number }> {
+  return get<{ recommendations: LeadRecommendation[]; total: number }>('/api/v1/lawyer/recommendations', {
+    limit,
+  })
+}
+
 export function listLawyerLeads(
   status?: string,
-  limit = 50,
+  limit = 100,
   offset = 0,
 ): Promise<{ leads: LeadListItem[]; total: number }> {
   return get<{ leads: LeadListItem[]; total: number }>('/api/v1/lawyer/leads', {
@@ -101,6 +114,10 @@ export function listLawyerLeads(
     limit,
     offset,
   })
+}
+
+export function listMyLeads(limit = 100): Promise<{ leads: LeadListItem[]; total: number }> {
+  return get<{ leads: LeadListItem[]; total: number }>('/api/v1/lawyer/my-leads', { limit })
 }
 
 export function getLawyerLead(leadId: string): Promise<LeadDetail> {

@@ -150,3 +150,13 @@ def get_current_lawyer(current_user: User = Depends(get_current_user)) -> User:
             detail="需要律师身份",
         )
     return current_user
+
+
+def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
+    """仅允许超级管理员访问。"""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要超级管理员权限",
+        )
+    return current_user

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { NEmpty, NProgress, NSelect, NSkeleton, NTag, useMessage } from 'naive-ui'
 import { listLawyerLeads } from '@/services/lawyerService'
 import type { LeadListItem } from '@/services/lawyerService'
-import { CASE_TYPE_MAP, COMPLEXITY_MAP, LEAD_STATUS_MAP } from '@/constants'
+import { CASE_TYPE_MAP, COMPLEXITY_MAP } from '@/constants'
 
 const router = useRouter()
 const message = useMessage()
@@ -21,10 +21,10 @@ const statusOptions = [
   { label: '已完成', value: 'completed' },
 ]
 
-const filteredLeads = computed(() => {
+const filteredLeads = () => {
   if (!statusFilter.value) return leads.value
   return leads.value.filter((lead) => lead.status === statusFilter.value)
-})
+}
 
 onMounted(loadLeads)
 
@@ -61,11 +61,11 @@ function openDetail(id: string) {
 </script>
 
 <template>
-  <div class="leads-page fade-in">
-    <div class="leads-header">
-      <div class="leads-title">
-        <h2>📥 待接单线索</h2>
-        <n-tag size="small" :bordered="false" type="info">共 {{ total }} 条</n-tag>
+  <div class="market-page fade-in">
+    <div class="market-header">
+      <div>
+        <h2>📋 线索市场</h2>
+        <p class="market-sub">全部待接单案件，按风险评分排序（共 {{ total }} 条）</p>
       </div>
       <n-select
         v-model:value="statusFilter"
@@ -76,18 +76,18 @@ function openDetail(id: string) {
       />
     </div>
 
-    <div v-if="loading" class="leads-skeleton">
+    <div v-if="loading" class="market-skeleton">
       <n-skeleton v-for="i in 4" :key="i" height="110px" :sharp="false" style="margin-bottom: 12px" />
     </div>
 
-    <n-empty v-else-if="filteredLeads.length === 0" description="暂无线索">
+    <n-empty v-else-if="filteredLeads().length === 0" description="暂无符合条件的线索">
       <template #extra>
-        <span class="empty-tip">劳动者完成咨询分诊后，案件会自动出现在这里</span>
+        <span class="empty-tip">劳动者完成咨询分诊后，案件会自动进入线索市场</span>
       </template>
     </n-empty>
 
     <div v-else class="lead-list">
-      <div v-for="lead in filteredLeads" :key="lead.id" class="lead-card glass-card" @click="openDetail(lead.id)">
+      <div v-for="lead in filteredLeads()" :key="lead.id" class="lead-card glass-card" @click="openDetail(lead.id)">
         <div class="lead-main">
           <div class="lead-case">
             <span class="lead-icon">{{ CASE_TYPE_MAP[lead.case_type]?.icon || '⚖️' }}</span>
@@ -96,9 +96,9 @@ function openDetail(id: string) {
             <n-tag
               size="small"
               :bordered="false"
-              :type="(LEAD_STATUS_MAP[lead.status]?.type as any) || 'default'"
+              :type="lead.status === 'open' ? 'warning' : lead.status === 'claimed' ? 'success' : 'default'"
             >
-              {{ LEAD_STATUS_MAP[lead.status]?.label }}
+              {{ lead.status === 'open' ? '待接单' : lead.status === 'claimed' ? '已接单' : '已完成' }}
             </n-tag>
           </div>
           <div class="lead-summary">{{ lead.summary || '暂无摘要' }}</div>
@@ -119,7 +119,7 @@ function openDetail(id: string) {
               :stroke-width="8"
               :rail-color="'rgba(128,128,128,0.15)'"
               :show-text="false"
-              style="width: 48px"
+              style="width: 44px"
             />
             <span class="score-value">{{ lead.risk_score ?? '-' }}</span>
           </div>
@@ -128,11 +128,11 @@ function openDetail(id: string) {
             <n-progress
               type="circle"
               :percentage="lead.evidence_score ?? 0"
-              :status="lead.evidence_score !== null && lead.evidence_score !== undefined && lead.evidence_score >= 70 ? 'success' : 'warning'"
+              :status="(lead.evidence_score ?? 0) >= 70 ? 'success' : 'warning'"
               :stroke-width="8"
               :rail-color="'rgba(128,128,128,0.15)'"
               :show-text="false"
-              style="width: 48px"
+              style="width: 44px"
             />
             <span class="score-value">{{ lead.evidence_score ?? '-' }}</span>
           </div>
@@ -152,22 +152,22 @@ function openDetail(id: string) {
 </template>
 
 <style scoped>
-.leads-header {
+.market-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 16px;
 }
-.leads-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.leads-title h2 {
+.market-header h2 {
   margin: 0;
   font-size: 18px;
 }
-.leads-skeleton {
+.market-sub {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+.market-skeleton {
   padding: 4px;
 }
 .empty-tip {
@@ -233,7 +233,7 @@ function openDetail(id: string) {
 .lead-scores {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   flex-shrink: 0;
 }
 .score-col {
