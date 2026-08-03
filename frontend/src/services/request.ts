@@ -1,156 +1,103 @@
 /**
- * 统一 HTTP 请求封装
- * - 基于浏览器原生 fetch
- * - 从环境变量读取 VITE_API_BASE_URL
- * - 统一处理非 2xx 响应和网络异常
+ * 基于 fetch 的统一请求封装（GET/POST/DELETE + JWT 注入 + 401 处理）
  */
 
-/** 后端 API 基础地址 */
-function getDefaultApiBaseUrl(port: number): string {
-  if (typeof window !== 'undefined' && window.location?.hostname) {
-    return `${window.location.protocol}//${window.location.hostname}:${port}`;
-  }
-  return `http://127.0.0.1:${port}`;
-}
-
-const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl(8000);
-
-/** 自定义请求错误 */
 export class ApiError extends Error {
-  /** HTTP 状态码 */
-  status: number;
-  /** 后端返回的错误详情（如果可解析） */
-  detail: unknown;
+  status: number
+  detail: string
 
-  constructor(status: number, message: string, detail?: unknown) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.detail = detail;
+  constructor(status: number, detail: string) {
+    super(detail)
+    this.status = status
+    this.detail = detail
   }
 }
 
-/** 通用请求选项 */
-interface RequestOptions extends Omit<RequestInit, 'method' | 'body'> {
-  /** URL 查询参数 */
-  params?: Record<string, string | number | boolean | undefined>;
+function getApiBaseUrl(): string {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL as string
+  }
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    return `${window.location.protocol}//${window.location.hostname}:8000`
+  }
+  return 'http://127.0.0.1:8000'
 }
 
-/**
- * 拼接查询参数到 URL
- */
-function buildUrl(
-  path: string,
-  params?: Record<string, string | number | boolean | undefined>,
-): string {
-  const url = new URL(`${API_BASE_URL}${path}`);
+export const API_BASE_URL = getApiBaseUrl()
+
+function getToken(): string | null {
+  return localStorage.getItem('labors_token')
+}
+
+function buildUrl(path: string, params?: Record<string, unknown>): string {
+  const url = new URL(`${API_BASE_URL}${path}`)
   if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined) {
-        url.searchParams.append(key, String(value));
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '') {
+        url.searchParams.set(key, String(value))
       }
-    });
-  }
-  return url.toString();
-}
-
-/**
- * 统一处理响应
- */
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    let detail: unknown;
-    try {
-      detail = await response.json();
-    } catch {
-      // 响应体不是合法 JSON，忽略
     }
-    const message =
-      typeof detail === 'object' && detail !== null && 'detail' in detail
-        ? String((detail as { detail: unknown }).detail)
-        : `请求失败，状态码：${response.status}`;
-    throw new ApiError(response.status, message, detail);
+  }
+  return url.toString()
+}
+
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    localStorage.removeItem('labors_token')
+    localStorage.removeItem('labors_user')
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login'
+    }
+    throw new ApiError(401, '登录已过期，请重新登录')
   }
 
-  // 204 No Content 等无响应体的情况
+  if (!response.ok) {
+    let detail = `请求失败，状态码：${response.status}`
+    try {
+      const data = await response.json()
+      if (typeof data?.detail === 'string') {
+        detail = data.detail
+      }
+    } catch {
+      const text = await response.text().catch(() => '')
+      if (text) detail = text
+    }
+    throw new ApiError(response.status, detail)
+  }
+
   if (response.status === 204) {
-    return undefined as T;
+    return undefined as T
   }
-
-  return response.json() as Promise<T>;
+  return (await response.json()) as T
 }
 
-/**
- * GET 请求
- */
-export async function get<T = unknown>(
-  path: string,
-  options?: RequestOptions,
-): Promise<T> {
-  const { params, ...fetchOptions } = options || {};
-  try {
-    const response = await fetch(buildUrl(path, params), {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...fetchOptions?.headers,
-      },
-      ...fetchOptions,
-    });
-    return handleResponse<T>(response);
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(0, '网络异常，无法连接到服务器', error);
-  }
+export async function get<T>(path: string, params?: Record<string, unknown>): Promise<T> {
+  const headers: Record<string, string> = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const response = await fetch(buildUrl(path, params), { headers })
+  return handleResponse<T>(response)
 }
 
-/**
- * POST 请求
- */
-export async function post<T = unknown>(
-  path: string,
-  body?: unknown,
-  options?: RequestOptions,
-): Promise<T> {
-  const { params, ...fetchOptions } = options || {};
-  try {
-    const response = await fetch(buildUrl(path, params), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...fetchOptions?.headers,
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      ...fetchOptions,
-    });
-    return handleResponse<T>(response);
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(0, '网络异常，无法连接到服务器', error);
-  }
+export async function post<T>(path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const response = await fetch(buildUrl(path), {
+    method: 'POST',
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+  return handleResponse<T>(response)
 }
 
-/**
- * DELETE 请求
- */
-export async function del<T = unknown>(
-  path: string,
-  options?: RequestOptions,
-): Promise<T> {
-  const { params, ...fetchOptions } = options || {};
-  try {
-    const response = await fetch(buildUrl(path, params), {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        ...fetchOptions?.headers,
-      },
-      ...fetchOptions,
-    });
-    return handleResponse<T>(response);
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(0, '网络异常，无法连接到服务器', error);
-  }
+export async function del<T>(path: string): Promise<T> {
+  const headers: Record<string, string> = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const response = await fetch(buildUrl(path), { method: 'DELETE', headers })
+  return handleResponse<T>(response)
 }

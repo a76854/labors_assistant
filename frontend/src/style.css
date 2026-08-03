@@ -1,0 +1,121 @@
+:root {
+  --color-primary: #3b82f6;
+  --bg-base: #0f1117;
+  --bg-elevated: #1a1d27;
+  --bg-container: rgba(26, 29, 39, 0.72);
+  --bg-popover: #232735;
+  --text-primary: #e8eaf0;
+  --text-secondary: #9aa1b2;
+  --text-tertiary: #6b7280;
+  --border-color: rgba(255, 255, 255, 0.09);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --blur-base: 14px;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --navbar-height: 60px;
+  --font-family:
+    'Inter', 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --color-primary: #2563eb;
+  --bg-base: #f4f5f8;
+  --bg-elevated: #ffffff;
+  --bg-container: rgba(255, 255, 255, 0.78);
+  --bg-popover: #ffffff;
+  --text-primary: #1c2028;
+  --text-secondary: #5b6372;
+  --text-tertiary: #9aa1b2;
+  --border-color: rgba(0, 0, 0, 0.09);
+  --shadow-card: 0 8px 28px rgba(31, 41, 55, 0.1);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition:
+    background 0.3s ease,
+    color 0.3s ease;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* 毛玻璃卡片 */
+.glass-card {
+  background: var(--bg-container);
+  backdrop-filter: blur(var(--blur-base));
+  -webkit-backdrop-filter: blur(var(--blur-base));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.35);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.55);
+}
+
+/* 打字机光标 */
+.typing-cursor::after {
+  content: '▍';
+  animation: blink 1s step-end infinite;
+  color: var(--color-primary);
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}

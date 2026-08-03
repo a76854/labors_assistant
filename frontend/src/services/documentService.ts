@@ -1,20 +1,32 @@
-import { get, post } from './request';
-import type { DocumentGenerateRequest, DocumentResponse } from '../types';
+/**
+ * 文档 API
+ */
+import { get, post } from './request'
 
-export interface DocumentExportResponse {
-  message?: string;
-  download_url?: string;
-  filename?: string;
+export interface DocumentResponse {
+  id: string
+  session_id: string
+  template_id: string
+  title?: string | null
+  status: 'pending' | 'generated' | 'exported' | 'failed'
+  content?: string | null
+  file_url?: string | null
+  file_size?: number | null
+  created_at: string
+  updated_at: string
 }
 
-export const generateDocument = async (sessionId: string, data: DocumentGenerateRequest): Promise<DocumentResponse> => {
-  return post<DocumentResponse>(`/api/v1/sessions/${sessionId}/generate-document`, data);
-};
+export function generateDocument(
+  sessionId: string,
+  data: { template_id: string; format?: string },
+): Promise<DocumentResponse> {
+  return post<DocumentResponse>(`/api/v1/sessions/${sessionId}/generate-document`, data)
+}
 
-export const getDocument = async (docId: string): Promise<DocumentResponse> => {
-  return get<DocumentResponse>(`/api/v1/documents/${docId}`);
-};
+export function getDocument(docId: string): Promise<DocumentResponse> {
+  return get<DocumentResponse>(`/api/v1/documents/${docId}`)
+}
 
-export const exportDocument = async (docId: string): Promise<DocumentExportResponse> => {
-  return get<DocumentExportResponse>(`/api/v1/documents/${docId}/export`);
-};
+export async function exportDocument(docId: string): Promise<{ download_url: string; filename: string }> {
+  return get<{ download_url: string; filename: string }>(`/api/v1/documents/${docId}/export`)
+}

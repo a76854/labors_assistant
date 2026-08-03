@@ -16,6 +16,7 @@ from backend.api.schema import (
 from backend.services.chat import ChatService
 from backend.services.document import DocumentService
 from backend.services.agent_service import AgentService
+from backend.services.auth import get_current_user
 from backend.utils.timezone import now_beijing
 from typing import List, Optional
 
@@ -28,10 +29,20 @@ router = APIRouter(prefix="/api/v1", tags=["core"])
 # ============================================================================
 
 @router.post("/sessions", response_model=SessionResponse, status_code=201)
-def create_session(req: SessionCreateRequest, db: Session = Depends(get_db)):
+def create_session(
+    req: SessionCreateRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
     """创建新的对话会话"""
     try:
-        session = ChatService.create_session(db, req.case_type, req.description)
+        session = ChatService.create_session(
+            db,
+            req.case_type,
+            req.description,
+            region=req.region,
+            user_id=current_user.id,
+        )
         return SessionResponse.model_validate(session)
     except Exception as e:
         raise HTTPException(
@@ -45,13 +56,14 @@ def list_sessions(
     limit: int = 20,
     offset: int = 0,
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
-    """获取历史会话列表。"""
+    """获取当前用户的历史会话列表。"""
     try:
-        sessions = ChatService.list_sessions(db, limit=limit, offset=offset)
+        sessions = ChatService.list_sessions(db, limit=limit, offset=offset, user_id=current_user.id)
         return SessionListResponse(
             sessions=sessions,
-            total=ChatService.get_sessions_count(db),
+            total=ChatService.get_sessions_count(db, user_id=current_user.id),
         )
     except Exception as e:
         raise HTTPException(
@@ -232,6 +244,7 @@ def generate_document(
             session_id=session_id,
             case_type=str(session.case_type),
             template_id=req.template_id,
+            region=str(session.region or "beijing"),
             messages=history_messages,
         )
 

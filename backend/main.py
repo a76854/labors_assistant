@@ -7,6 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.config import get_settings
 from backend.api.routes import router
+from backend.api.auth_routes import router as auth_router
+from backend.api.triage_routes import router as triage_router
+from backend.api.lawyer_routes import router as lawyer_router
 
 # 初始化设置
 settings = get_settings()
@@ -57,6 +60,9 @@ app.add_middleware(
 # 注册路由
 # ============================================================================
 app.include_router(router)
+app.include_router(auth_router)
+app.include_router(triage_router)
+app.include_router(lawyer_router)
 
 
 # ============================================================================

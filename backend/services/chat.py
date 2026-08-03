@@ -19,11 +19,19 @@ class ChatService:
     """聊天服务"""
     
     @staticmethod
-    def create_session(db: Session, case_type: str, description: str | None = None) -> SessionModel:
+    def create_session(
+        db: Session,
+        case_type: str,
+        description: str | None = None,
+        region: str = "beijing",
+        user_id: str | None = None,
+    ) -> SessionModel:
         """创建新会话"""
         session = SessionModel(
             id=str(uuid.uuid4()),
+            user_id=user_id,
             case_type=case_type,
+            region=region,
             description=description,
             status="active"
         )
@@ -99,18 +107,19 @@ class ChatService:
         }
 
     @staticmethod
-    def _sessions_with_messages_subquery(db: Session):
+    def _sessions_with_messages_subquery(db: Session, user_id: str | None = None):
         """返回至少包含一条消息的会话子查询。"""
-        return (
-            db.query(Message.session_id.label("session_id"))
-            .group_by(Message.session_id)
-            .subquery()
-        )
+        query = db.query(Message.session_id.label("session_id"))
+        if user_id:
+            query = query.join(SessionModel, SessionModel.id == Message.session_id).filter(
+                SessionModel.user_id == user_id
+            )
+        return query.group_by(Message.session_id).subquery()
 
     @staticmethod
-    def get_sessions_count(db: Session) -> int:
+    def get_sessions_count(db: Session, user_id: str | None = None) -> int:
         """获取有历史消息的会话总数。"""
-        sessions_with_messages = ChatService._sessions_with_messages_subquery(db)
+        sessions_with_messages = ChatService._sessions_with_messages_subquery(db, user_id)
         return (
             db.query(func.count(SessionModel.id))
             .join(sessions_with_messages, SessionModel.id == sessions_with_messages.c.session_id)
@@ -133,13 +142,22 @@ class ChatService:
         return normalized[: max_length - 1] + "…"
 
     @staticmethod
-    def list_sessions(db: Session, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
+    def list_sessions(
+        db: Session,
+        limit: int = 20,
+        offset: int = 0,
+        user_id: str | None = None,
+    ) -> List[Dict[str, Any]]:
         """获取首页历史会话列表，按最近活跃时间倒序排列。"""
-        sessions_with_messages = ChatService._sessions_with_messages_subquery(db)
-        sessions = (
+        sessions_with_messages = ChatService._sessions_with_messages_subquery(db, user_id)
+        query = (
             db.query(SessionModel)
             .join(sessions_with_messages, SessionModel.id == sessions_with_messages.c.session_id)
-            .order_by(SessionModel.updated_at.desc(), SessionModel.created_at.desc())
+        )
+        if user_id:
+            query = query.filter(SessionModel.user_id == user_id)
+        sessions = (
+            query.order_by(SessionModel.updated_at.desc(), SessionModel.created_at.desc())
             .offset(offset)
             .limit(limit)
             .all()
@@ -193,6 +211,7 @@ class ChatService:
                 {
                     "id": session.id,
                     "case_type": session.case_type,
+                    "region": session.region,
                     "status": session.status,
                     "description": session.description,
                     "created_at": session.created_at,

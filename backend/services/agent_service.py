@@ -65,16 +65,19 @@ class AgentService:
         session_id: str,
         case_type: str,
         template_id: str,
+        region: str = "beijing",
         messages: Optional[List[Any]] = None,
     ) -> Optional[str]:
         """
         调用 agent 生成诉状文档
-        
+
         Args:
             session_id: 会话 ID
             case_type: 案件类型（如 "wage_arrears", "labor_contract", "work_injury"）
             template_id: 模板 ID
-        
+            region: 地区（beijing/shanghai/guangdong），用于地区文书规范适配
+            messages: 会话历史消息列表
+
         Returns:
             生成的文档 URL，失败返回 None
         """
@@ -89,9 +92,13 @@ class AgentService:
                 lines.append(f"{role}: {content}")
             history_text = "\n".join(lines)
 
+        region_instruction = AgentService._region_instruction(region)
+
         prompt = (
             f"请基于当前会话信息，生成一份{case_type}的诉状，使用模板 {template_id}。\n"
-            "你必须调用 generate_legal_doc_tool 输出可下载的 .docx 文件。\n"
+            f"{region_instruction}\n"
+            "你必须调用 generate_legal_doc_tool 输出可下载的 .docx 文件，"
+            "且调用时 region 参数必须传 \"" + region + "\"。\n"
             "若个别字段缺失，请基于上下文做最保守补全（例如填'待补充'），但仍需先生成文书。"
         )
 
@@ -115,14 +122,26 @@ class AgentService:
 
         # 返回文本兜底，便于上层记录失败原因。
         if isinstance(final_answer, str) and final_answer.strip():
-            fallback = AgentService._fallback_generate_document(history_text, case_type)
+            fallback = AgentService._fallback_generate_document(history_text, case_type, region)
             return fallback or final_answer
 
-        fallback = AgentService._fallback_generate_document(history_text, case_type)
+        fallback = AgentService._fallback_generate_document(history_text, case_type, region)
         if fallback:
             return fallback
 
         return None
+
+    @staticmethod
+    def _region_instruction(region: str) -> str:
+        """生成地区适配指令。"""
+        from backend.services.regions import get_institution, get_region_info
+
+        info = get_region_info(region)
+        return (
+            f"本案适用地区：{info['name']}。"
+            f"受理机构为「{info['institution']}」，"
+            f"请依据该地区文书规范生成：{info['note']}"
+        )
 
     @staticmethod
     def _pick_by_patterns(text: str, patterns: List[str], default: str) -> str:
@@ -135,9 +154,11 @@ class AgentService:
         return default
 
     @staticmethod
-    def _fallback_generate_document(history_text: str, case_type: str) -> Optional[str]:
+    def _fallback_generate_document(history_text: str, case_type: str, region: str = "beijing") -> Optional[str]:
         """兜底策略：直接调用文书工具，避免前端长期处于 failed 状态。"""
         try:
+            from agent.tools.doc_generator import get_region_institution
+
             plaintiff = AgentService._pick_by_patterns(
                 history_text,
                 [r"原告[：:]\s*([^；;。\n]+)", r"我叫\s*([^，,。；;\n]+)"],
@@ -169,7 +190,8 @@ class AgentService:
                     "amount": amount,
                     "cause_of_action": cause_of_action,
                     "facts_and_reasons": "根据会话记录整理，部分信息待补充。",
-                    "court_name": "有管辖权的人民法院",
+                    "court_name": get_region_institution(region),
+                    "region": region,
                 }
             )
         except Exception:

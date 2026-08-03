@@ -12,6 +12,28 @@ from agent.state import LawsuitElementsSchema
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+# 地区文书规范适配：不同地区仲裁机构与文书格式存在差异
+REGION_INSTITUTIONS = {
+    "beijing": "北京市朝阳区劳动人事争议仲裁委员会",
+    "shanghai": "上海市劳动人事争议仲裁委员会",
+    "guangdong": "广东省劳动人事争议仲裁委员会",
+}
+
+REGION_NAMES = {
+    "beijing": "北京",
+    "shanghai": "上海",
+    "guangdong": "广东",
+}
+
+
+def get_region_institution(region: str) -> str:
+    """按地区获取仲裁/管辖机构名称，未知地区回退北京。"""
+    return REGION_INSTITUTIONS.get(region, REGION_INSTITUTIONS["beijing"])
+
+
+def get_region_name(region: str) -> str:
+    return REGION_NAMES.get(region, "北京")
+
 
 @tool(args_schema=LawsuitElementsSchema)
 def generate_legal_doc_tool(
@@ -22,6 +44,7 @@ def generate_legal_doc_tool(
   cause_of_action: str,
   facts_and_reasons: str,
   court_name: str,
+  region: str = "beijing",
 ) -> str:
   """
   法律文书生成工具：生成符合中国法院常用格式的《民事起诉状》。
@@ -35,7 +58,8 @@ def generate_legal_doc_tool(
     amount: 涉案金额。
     cause_of_action: 案由。
     facts_and_reasons: 事实与理由。
-    court_name: 管辖法院名称。
+    court_name: 管辖法院/仲裁机构名称。
+    region: 案件地区（beijing/shanghai/guangdong），用于地区文书规范适配。
 
   返回:
     生成结果说明与模拟下载链接。
@@ -62,6 +86,11 @@ def generate_legal_doc_tool(
     title.runs[0].font.size = Pt(22)
     title.runs[0].bold = True
     doc.add_paragraph("")
+
+    # 地区适配：受理机构按地区切换
+    institution = get_region_institution(region)
+    institution_paragraph = doc.add_paragraph(f"受理机构：{institution}")
+    institution_paragraph.runs[0].font.size = Pt(12)
 
     doc.add_paragraph(f"原告：{plaintiff}")
     doc.add_paragraph(f"被告：{defendant}")
@@ -91,7 +120,7 @@ def generate_legal_doc_tool(
     doc.add_paragraph("")
     doc.add_paragraph("")
     doc.add_paragraph("此致")
-    doc.add_paragraph(court_name)
+    doc.add_paragraph(court_name if court_name and "法院" in court_name else institution)
 
     doc.add_paragraph("")
     doc.add_paragraph("")
@@ -100,6 +129,10 @@ def generate_legal_doc_tool(
     signer_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     date_paragraph = doc.add_paragraph("年    月    日")
     date_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+
+    doc.add_paragraph("")
+    note_paragraph = doc.add_paragraph(f"（本文书依据{get_region_name(region)}地区文书规范生成，提交前请以当地仲裁机构最新要求为准）")
+    note_paragraph.runs[0].font.size = Pt(9)
 
     doc.save(str(file_path))
 

@@ -1,4 +1,4 @@
-# 劳动者维权AI助手 (labors_assistant)
+# 劳动维权平台 (labors_assistant)
 
 > 用AI技术帮助劳动者维权，一键生成高质量诉状，让法律援助不再是奢侈品。
 
@@ -62,6 +62,16 @@
 | **案例查询** | 检索相似案例，参考判决结构 | Agent | 4月18日 |
 | **用户账户** | 简单的用户注册和登录 | 后端 | 4月18日 |
 
+### P2 平台化扩展（当前版本已实现）
+| 功能 | 说明 |
+|------|------|
+| **用户系统** | 劳动者/律师双角色注册登录，JWT 认证，会话按用户隔离 |
+| **地区规则适配** | 北京/上海/广东 3 地区模板切换，文书受理机构按地区渲染 |
+| **案件分诊** | 规则启发式证据完整度/风险评分（0-100），缺失证据清单，复杂度分级 |
+| **律师推荐** | 按案由+地区从律师库推荐，复杂案件自动引导律师介入 |
+| **律师后台** | 待接单线索列表（按风险排序）、接单、一键发起补充材料请求 |
+| **线索闭环** | 咨询 → 分诊 → 发布线索 → 律师接单 → 补充材料 → 完成
+
 ---
 
 ## 系统架构
@@ -106,8 +116,9 @@
 | **数据库** | SQLite/PostgreSQL | 开发SQLite，生产Postgres |
 | **AI工作流** | LangGraph | >=0.1.x (状态机、编排) |
 | **LLM调用** | LangChain | >=0.1.x (模型适配) |
-| **前端框架** | React + TypeScript | ^18.0 |
-| **UI组件** | Ant Design | >=5.0 |
+| **前端框架** | Vue 3 + TypeScript | ^3.5 |
+| **UI组件** | Naive UI | ^2.44 |
+| **前端状态** | Pinia + Vue Router | ^4 / ^5 |
 | **文档处理** | python-docx | >=0.8.11 |
 | **测试框架** | pytest | >=7.0 |
 | **CI/CD** | GitHub Actions | 自动化集成测试 |
@@ -153,14 +164,25 @@ npm run dev  # http://localhost:3000
 **4. 验证系统**
 ```bash
 curl http://localhost:8000/api/health
-# 浏览 http://localhost:3000
+# 浏览 http://localhost:5173
+```
+
+### 演示账号（由 init_db.py 自动创建）
+| 角色 | 用户名 | 密码 | 用途 |
+|------|--------|------|------|
+| 劳动者 | `worker_demo` | `demo123456` | 体验咨询→分诊→发布线索→补充材料 |
+| 律师 | `lawyer_demo` | `demo123456` | 体验律师后台：线索列表→接单→一键补材料 |
+
+### 运行冒烟测试
+```bash
+.venv/bin/python scripts/test_api.py   # 全链路：登录→对话→分诊→接单→补材料
 ```
 
 ### 运行测试
 ```bash
-pytest tests/unit/ -v           # 后端单元测试
-pytest tests/integration/ -v    # 集成测试
-cd frontend && npm test         # 前端测试
+.venv/bin/python scripts/test_api.py   # 后端+Agent 全链路冒烟测试
+cd frontend && npm run lint            # 前端 lint
+cd frontend && npm run build           # 前端类型检查 + 构建
 ```
 
 ### 部署到云环境
@@ -183,35 +205,31 @@ labors_assistant/
 │
 ├── backend/                 # FastAPI业务服务
 │   ├── main.py
-│   ├── api/routes.py, schema.py
-│   ├── services/chat.py, document.py, agent.py
+│   ├── api/routes.py, auth_routes.py, triage_routes.py, lawyer_routes.py, schema.py
+│   ├── services/chat.py, document.py, agent_service.py, auth.py, triage.py, regions.py
 │   ├── db/models.py, database.py
 │   └── config.py
 │
 ├── agent/                   # LangGraph AI工作流
 │   ├── workflow.py
+│   ├── state.py
+│   ├── agent_node.py
 │   ├── prompts.py
-│   ├── nodes/intent.py, collection.py, extraction.py, analysis.py
-│   └── rag/legal_search.py
+│   └── tools/doc_generator.py, legal_search.py
 │
-├── frontend/                # React前端
-│   ├── src/pages/ChatPage.tsx, PreviewPage.tsx, ResultPage.tsx
-│   ├── src/components/ChatBox.tsx, FormBuilder.tsx, DocPreview.tsx
-│   ├── src/services/api.ts
+├── frontend/                # Vue3 前端 (Vite + Naive UI + Pinia)
+│   ├── src/pages/HomePage.vue, ChatPage.vue, ResultPage.vue
+│   ├── src/pages/LoginPage.vue, RegisterPage.vue
+│   ├── src/pages/lawyer/LeadsPage.vue, LeadDetailPage.vue
+│   ├── src/layouts/MainLayout.vue, LawyerLayout.vue
+│   ├── src/services/*.ts, src/stores/*.ts
 │   └── package.json
 │
-├── docs/                    # 文档和模板
-│   ├── templates/labor_dispute.docx, wage_arrears.docx, work_injury.docx
-│   ├── API.md, ARCHITECTURE.md, CONTRIBUTION.md
+├── scripts/                 # 初始化与测试脚本
+│   ├── init_db.py           # 建表 + 迁移 + 地区模板 + 演示账号
+│   └── test_api.py          # 全链路冒烟测试（含新功能）
 │
-├── tests/                   # 测试用例
-│   ├── unit/test_api.py, test_services.py, test_workflow.py
-│   ├── integration/test_end2end.py, test_document_generation.py
-│   └── fixtures/chat_history.json, legal_case.json
-│
-└── deployment/              # 部署配置
-    ├── Dockerfile, docker-compose.yml
-    └── scripts/init_db.py, seed_templates.py
+└── generated_docs/          # 生成的 .docx 文书
 ```
 
 ---

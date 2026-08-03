@@ -18,6 +18,7 @@ class SessionCreateRequest(BaseModel):
     用于开启一个新的案件咨询会话，前端通常在用户选择案件类型并填写简要描述后提交。
     """
     case_type: str = Field(..., description="案件类型，取值范围: wage_arrears|labor_contract|work_injury")
+    region: str = Field(default="beijing", description="地区，取值范围: beijing|shanghai|guangdong")
     description: Optional[str] = Field(None, description="案件的简要描述，便于后续生成建议和文书")
 
 
@@ -28,6 +29,7 @@ class SessionResponse(BaseModel):
     """
     id: str = Field(..., description="会话ID")
     case_type: str = Field(..., description="案件类型")
+    region: Optional[str] = Field("beijing", description="地区")
     status: str = Field(..., description="会话状态，例如 active|closed|draft")
     description: Optional[str] = Field(None, description="会话对应的案件描述")
     created_at: datetime = Field(..., description="创建时间")
@@ -42,6 +44,7 @@ class SessionListItem(BaseModel):
 
     id: str = Field(..., description="会话ID")
     case_type: str = Field(..., description="案件类型")
+    region: Optional[str] = Field("beijing", description="地区")
     status: str = Field(..., description="会话状态")
     description: Optional[str] = Field(None, description="案件描述")
     created_at: datetime = Field(..., description="创建时间")
@@ -293,3 +296,151 @@ class LawSearchRequest(BaseModel):
 class LawSearchResult(BaseModel):
     """法律条文搜索结果。"""
     laws: List[Dict[str, str]] = Field(..., description="法律条文列表，每项包含 law、article、content")
+
+
+# ============================================================================
+# 用户认证 Schemas
+# ============================================================================
+
+class RegisterRequest(BaseModel):
+    """注册请求。"""
+    username: str = Field(..., min_length=2, max_length=50, description="用户名")
+    password: str = Field(..., min_length=6, max_length=100, description="密码")
+    role: str = Field(default="user", description="角色，取值范围: user|lawyer")
+    name: Optional[str] = Field(None, max_length=50, description="姓名/机构名称")
+    phone: Optional[str] = Field(None, max_length=20, description="联系电话")
+
+
+class LoginRequest(BaseModel):
+    """登录请求。"""
+    username: str = Field(..., description="用户名")
+    password: str = Field(..., description="密码")
+
+
+class UserResponse(BaseModel):
+    """用户信息响应。"""
+    id: str = Field(..., description="用户ID")
+    username: str = Field(..., description="用户名")
+    role: str = Field(..., description="角色")
+    name: Optional[str] = Field(None, description="姓名")
+    phone: Optional[str] = Field(None, description="联系电话")
+    created_at: datetime = Field(..., description="注册时间")
+
+    class Config:
+        from_attributes = True
+
+
+class TokenResponse(BaseModel):
+    """登录令牌响应。"""
+    access_token: str = Field(..., description="JWT access token")
+    token_type: str = Field(default="bearer", description="令牌类型")
+    user: UserResponse = Field(..., description="用户信息")
+
+
+# ============================================================================
+# 案件分诊 Schemas
+# ============================================================================
+
+class LawyerProfile(BaseModel):
+    """律师信息（推荐用）。"""
+    id: str = Field(..., description="律师ID")
+    name: str = Field(..., description="姓名")
+    license_no: str = Field(default="", description="执业证号")
+    specialties: List[str] = Field(default_factory=list, description="擅长案由")
+    years: int = Field(default=0, description="执业年限")
+    rating: float = Field(default=0.0, description="评分")
+    desc: str = Field(default="", description="简介")
+
+
+class TriageResponse(BaseModel):
+    """案件分诊结果。"""
+    session_id: str = Field(..., description="会话ID")
+    case_type: str = Field(..., description="案件类型")
+    region: Optional[str] = Field("beijing", description="地区")
+    evidence_score: int = Field(..., description="证据完整度 0-100")
+    evidence_covered: List[str] = Field(default_factory=list, description="已覆盖的证据类别")
+    missing_evidence: List[str] = Field(default_factory=list, description="缺失证据类别")
+    risk_score: int = Field(..., description="风险评分 0-100")
+    complexity: str = Field(..., description="复杂度: high|medium|low")
+    recommended_lawyers: List[LawyerProfile] = Field(default_factory=list, description="推荐律师")
+
+
+# ============================================================================
+# 律师后台 Schemas
+# ============================================================================
+
+class LeadListItem(BaseModel):
+    """律师线索列表项。"""
+    id: str = Field(..., description="线索ID")
+    session_id: str = Field(..., description="会话ID")
+    status: str = Field(..., description="线索状态: open|claimed|completed")
+    case_type: str = Field(..., description="案件类型")
+    region: Optional[str] = Field("beijing", description="地区")
+    evidence_score: Optional[int] = Field(None, description="证据完整度")
+    risk_score: Optional[int] = Field(None, description="风险评分")
+    complexity: Optional[str] = Field(None, description="复杂度")
+    missing_evidence: Optional[List[str]] = Field(None, description="缺失证据")
+    summary: Optional[str] = Field(None, description="案情摘要（脱敏）")
+    created_at: datetime = Field(..., description="创建时间")
+    updated_at: datetime = Field(..., description="更新时间")
+    material_request_count: int = Field(default=0, description="补充材料请求数")
+
+    class Config:
+        from_attributes = True
+
+
+class LeadListResponse(BaseModel):
+    """线索列表响应。"""
+    leads: List[LeadListItem] = Field(..., description="线索列表")
+    total: int = Field(..., description="线索总数")
+
+
+class LeadDetailResponse(LeadListItem):
+    """线索详情。"""
+    user_username: Optional[str] = Field(None, description="线索发布者用户名（脱敏）")
+    user_phone: Optional[str] = Field(None, description="发布者联系电话（脱敏）")
+    messages: List[Dict[str, str]] = Field(default_factory=list, description="对话摘要（最近10条）")
+    material_requests: List[Dict[str, Any]] = Field(default_factory=list, description="补充材料请求列表")
+
+
+class MaterialRequestCreate(BaseModel):
+    """发起补充材料请求。"""
+    items: List[Dict[str, str]] = Field(..., description="材料清单，如 [{name, description}]")
+    note: Optional[str] = Field(None, description="律师备注")
+
+
+class LeadActionResponse(BaseModel):
+    """线索操作响应。"""
+    id: str = Field(..., description="线索ID")
+    status: str = Field(..., description="操作后的状态")
+    message: str = Field(..., description="操作结果说明")
+
+
+class MaterialRequestResponse(BaseModel):
+    """补充材料请求响应。"""
+    id: str = Field(..., description="请求ID")
+    lead_id: str = Field(..., description="线索ID")
+    items: List[Dict[str, Any]] = Field(default_factory=list, description="材料清单")
+    note: Optional[str] = Field(None, description="备注")
+    status: str = Field(..., description="状态: pending|satisfied")
+    created_at: datetime = Field(..., description="创建时间")
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# 地区 Schemas
+# ============================================================================
+
+class RegionInfo(BaseModel):
+    """地区信息。"""
+    key: str = Field(..., description="地区标识")
+    name: str = Field(..., description="地区名称")
+    institution: str = Field(..., description="仲裁/管辖机构名称")
+    note: str = Field(default="", description="格式说明")
+
+
+class RegionListResponse(BaseModel):
+    """地区列表响应。"""
+    regions: List[RegionInfo] = Field(..., description="地区列表")

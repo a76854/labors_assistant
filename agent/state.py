@@ -23,4 +23,5 @@ class LawsuitElementsSchema(BaseModel):
     amount: str = Field(..., description="诉讼金额或其他具体数值（如赔偿金、欠款额等）")
     cause_of_action: str = Field(..., description="案由（如：民间借贷纠纷、劳动争议）")
     facts_and_reasons: str = Field(..., description="事实与理由（详细叙述案件经过、证据情况与法律依据）")
-    court_name: str = Field(..., description="管辖法院名称（如：深圳市南山区人民法院）")
+    court_name: str = Field(..., description="管辖法院/仲裁机构名称（如：深圳市南山区人民法院）")
+    region: str = Field(default="beijing", description="案件地区（beijing/shanghai/guangdong），用于地区文书规范适配")

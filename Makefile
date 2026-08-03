@@ -1,224 +1,130 @@
 SHELL := /bin/bash
 
-PROJECT_ROOT := $(CURDIR)
-VENV_DIR := $(PROJECT_ROOT)/.venv
-VENV_BIN := $(VENV_DIR)/bin
-PYTHON := python3
-PIP := $(VENV_BIN)/pip
-NODE_MAJOR ?= 20
+VENV    := .venv/bin
+PY      := $(VENV)/python
+RUN     := run
+LOG     := logs
 
-BACKEND_PORT ?= 8000
-AGENT_PORT ?= 8001
-FRONTEND_PORT ?= 4173
+PORT_BACKEND  ?= 8000
+PORT_AGENT    ?= 8001
+PORT_FRONTEND ?= 4173
 
-RUN_DIR := $(PROJECT_ROOT)/run
-LOG_DIR := $(PROJECT_ROOT)/logs
+BACKEND_CMD  := $(PY) -m uvicorn backend.main:app --host 0.0.0.0 --port $(PORT_BACKEND) --workers 2
+AGENT_CMD    := $(PY) -m uvicorn agent.main:app --host 0.0.0.0 --port $(PORT_AGENT) --workers 1
+FRONTEND_CMD := bash -c 'cd frontend && exec npx vite preview --host 0.0.0.0 --port $(PORT_FRONTEND)'
 
-BACKEND_PID_FILE := $(RUN_DIR)/backend.pid
-AGENT_PID_FILE := $(RUN_DIR)/agent.pid
-FRONTEND_PID_FILE := $(RUN_DIR)/frontend.pid
+.PHONY: help setup install init-db build lint dev start stop restart status health logs clean
 
-.PHONY: help install install-system install-node install-python install-frontend setup build-frontend init-db start start-backend start-agent start-frontend stop stop-backend stop-agent stop-frontend restart status health logs clean
+# ============================================================================
+# 通用后台服务启停宏
+# 用法: $(call start_service,名称,pid文件,启动命令,日志文件)
+#       $(call stop_service,名称,pid文件)
+# ============================================================================
+define start_service
+	@mkdir -p $(RUN) $(LOG); \
+	if [ -f $2 ] && kill -0 $$(cat $2) 2>/dev/null; then \
+		echo "[$1] 已在运行 (PID $$(cat $2))"; \
+	else \
+		echo "[$1] 启动中..."; \
+		nohup $3 > $4 2>&1 & echo $$! > $2; \
+		sleep 1; \
+		echo "[$1] 已启动 (PID $$(cat $2))"; \
+	fi
+endef
+
+define stop_service
+	@if [ -f $2 ] && kill -0 $$(cat $2) 2>/dev/null; then \
+		echo "[$1] 停止 (PID $$(cat $2))"; \
+		kill $$(cat $2) 2>/dev/null || true; \
+	fi; \
+	rm -f $2; \
+	echo "[$1] 已停止"
+endef
+
+start-backend:  ; $(call start_service,backend,$(RUN)/backend.pid,$(BACKEND_CMD),$(LOG)/backend.log)
+start-agent:    ; $(call start_service,agent,$(RUN)/agent.pid,$(AGENT_CMD),$(LOG)/agent.log)
+start-frontend: ; $(call start_service,frontend,$(RUN)/frontend.pid,$(FRONTEND_CMD),$(LOG)/frontend.log)
+stop-backend:   ; $(call stop_service,backend,$(RUN)/backend.pid)
+stop-agent:     ; $(call stop_service,agent,$(RUN)/agent.pid)
+stop-frontend:  ; $(call stop_service,frontend,$(RUN)/frontend.pid)
+
+# ============================================================================
+# 目标
+# ============================================================================
 
 help:
-	@echo "Available targets:"
-	@echo "  make install         - Install system packages, Node.js, Python venv deps, frontend deps"
-	@echo "  make setup           - Prepare runtime dirs and .env file"
-	@echo "  make init-db         - Initialize/reset database"
-	@echo "  make start           - Start backend, agent, and frontend (preview) in background"
-	@echo "  make stop            - Stop backend, agent, and frontend"
-	@echo "  make restart         - Restart all services"
-	@echo "  make status          - Show service process status"
-	@echo "  make health          - Run health checks"
-	@echo "  make logs            - Show log file locations"
+	@echo "用法: make <target>"
 	@echo ""
-	@echo "Ports: backend=$(BACKEND_PORT), agent=$(AGENT_PORT), frontend=$(FRONTEND_PORT)"
-
-install: install-system install-node install-python install-frontend
-
-install-system:
-	@set -e; \
-	if command -v apt-get >/dev/null 2>&1; then \
-		echo "[install-system] Installing OS packages via apt..."; \
-		sudo apt-get update; \
-		sudo apt-get install -y curl git build-essential python3 python3-dev python3-venv python3-pip ca-certificates libpq-dev pkg-config; \
-	else \
-		echo "[install-system] apt-get not found. Please install curl/git/build-essential/python3/python3-venv manually."; \
-	fi
-
-install-node:
-	@set -e; \
-	if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then \
-		echo "[install-node] Node is already installed: $$(node -v), npm: $$(npm -v)"; \
-	else \
-		echo "[install-node] Installing Node.js $(NODE_MAJOR).x ..."; \
-		curl -fsSL https://deb.nodesource.com/setup_$(NODE_MAJOR).x | sudo -E bash -; \
-		sudo apt-get install -y nodejs; \
-		echo "[install-node] Installed Node: $$(node -v), npm: $$(npm -v)"; \
-	fi
-
-install-python:
-	@set -e; \
-	echo "[install-python] Creating virtual environment at $(VENV_DIR) ..."; \
-	$(PYTHON) -m venv $(VENV_DIR); \
-	$(PIP) install --upgrade pip setuptools wheel; \
-	$(PIP) install -r requirements-backend.txt || { \
-		echo "[install-python] Backend deps install failed. If error mentions psycopg2-binary, run: make install-system then retry."; \
-		exit 1; \
-	}; \
-	$(PIP) install -r agent/requirements.txt; \
-	echo "[install-python] Python deps installed in $(VENV_DIR)"
-
-install-frontend:
-	@set -e; \
-	echo "[install-frontend] Installing frontend packages ..."; \
-	cd frontend; \
-	if [ -f package-lock.json ]; then npm ci; else npm install; fi
+	@echo "环境:"
+	@echo "  setup       创建运行目录并生成 .env"
+	@echo "  install     安装 Python 依赖与前端依赖"
+	@echo "  init-db     初始化数据库（建表/模板/演示账号）"
+	@echo ""
+	@echo "服务:"
+	@echo "  start       构建前端并后台启动全部服务 (backend:$(PORT_BACKEND) agent:$(PORT_AGENT) frontend:$(PORT_FRONTEND))"
+	@echo "  stop        停止全部服务"
+	@echo "  restart     重启全部服务"
+	@echo "  start-{backend,agent,frontend} / stop-{backend,agent,frontend}"
+	@echo "  status      查看服务状态"
+	@echo "  health      健康检查"
+	@echo "  logs        查看日志位置"
+	@echo ""
+	@echo "开发:"
+	@echo "  dev         前台启动前端开发服务器 (热更新)"
+	@echo "  build       前端构建 (vue-tsc + vite)"
+	@echo "  lint        前端 ESLint"
 
 setup:
-	@set -e; \
-	mkdir -p $(RUN_DIR) $(LOG_DIR) generated_docs storage/db; \
-	if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi; \
-	echo "[setup] Runtime directories are ready"; \
-	echo "[setup] Please check .env before starting services"
+	@mkdir -p $(RUN) $(LOG) generated_docs storage/db; \
+	[ -f .env ] || cp .env.example .env; \
+	echo "[setup] 目录已就绪，请检查 .env 配置"
 
-build-frontend:
-	@set -e; \
-	echo "[build-frontend] Building frontend ..."; \
-	cd frontend; npm run build
+install:
+	@python3 -m venv .venv; \
+	$(PY) -m pip install -r requirements-backend.txt -r agent/requirements.txt; \
+	cd frontend && npm install; \
+	echo "[install] 依赖安装完成"
 
 init-db:
-	@set -e; \
-	echo "[init-db] Initializing database ..."; \
-	$(VENV_BIN)/python scripts/init_db.py
+	$(PY) scripts/init_db.py
 
-start: setup build-frontend start-backend start-agent start-frontend
-	@echo "[start] All services started"
+build:
+	cd frontend && npm run build
+
+lint:
+	cd frontend && npm run lint
+
+dev:
+	cd frontend && npm run dev
+
+start: setup build start-backend start-agent start-frontend
 	@$(MAKE) status
 
-start-backend:
-	@set -e; \
-	mkdir -p $(RUN_DIR) $(LOG_DIR); \
-	if [ -f $(BACKEND_PID_FILE) ] && kill -0 $$(cat $(BACKEND_PID_FILE)) 2>/dev/null; then \
-		echo "[start-backend] Already running (PID: $$(cat $(BACKEND_PID_FILE)))"; \
-	else \
-		if [ -f $(BACKEND_PID_FILE) ]; then rm -f $(BACKEND_PID_FILE); fi; \
-		if ss -ltn | awk '{print $$4}' | grep -Eq '[:.]$(BACKEND_PORT)$$'; then \
-			echo "[start-backend] Port $(BACKEND_PORT) already in use. Run make stop-backend and retry."; \
-			exit 1; \
-		fi; \
-		echo "[start-backend] Starting backend on :$(BACKEND_PORT) ..."; \
-		nohup $(VENV_BIN)/uvicorn backend.main:app --host 0.0.0.0 --port $(BACKEND_PORT) --workers 2 > $(LOG_DIR)/backend.log 2>&1 & echo $$! > $(BACKEND_PID_FILE); \
-		echo "[start-backend] PID: $$(cat $(BACKEND_PID_FILE))"; \
-	fi
-
-start-agent:
-	@set -e; \
-	mkdir -p $(RUN_DIR) $(LOG_DIR); \
-	if [ -f $(AGENT_PID_FILE) ] && kill -0 $$(cat $(AGENT_PID_FILE)) 2>/dev/null; then \
-		echo "[start-agent] Already running (PID: $$(cat $(AGENT_PID_FILE)))"; \
-	else \
-		if [ -f $(AGENT_PID_FILE) ]; then rm -f $(AGENT_PID_FILE); fi; \
-		if ss -ltn | awk '{print $$4}' | grep -Eq '[:.]$(AGENT_PORT)$$'; then \
-			echo "[start-agent] Port $(AGENT_PORT) already in use. Run make stop-agent and retry."; \
-			exit 1; \
-		fi; \
-		echo "[start-agent] Starting agent on :$(AGENT_PORT) ..."; \
-		nohup $(VENV_BIN)/uvicorn agent.main:app --host 0.0.0.0 --port $(AGENT_PORT) --workers 1 > $(LOG_DIR)/agent.log 2>&1 & echo $$! > $(AGENT_PID_FILE); \
-		echo "[start-agent] PID: $$(cat $(AGENT_PID_FILE))"; \
-	fi
-
-start-frontend:
-	@set -e; \
-	mkdir -p $(RUN_DIR) $(LOG_DIR); \
-	if [ -f $(FRONTEND_PID_FILE) ] && kill -0 $$(cat $(FRONTEND_PID_FILE)) 2>/dev/null; then \
-		echo "[start-frontend] Already running (PID: $$(cat $(FRONTEND_PID_FILE)))"; \
-	else \
-		if [ -f $(FRONTEND_PID_FILE) ]; then rm -f $(FRONTEND_PID_FILE); fi; \
-		echo "[start-frontend] Starting frontend preview on :$(FRONTEND_PORT) ..."; \
-		cd frontend; nohup npx vite preview --host 0.0.0.0 --port $(FRONTEND_PORT) --strictPort > $(LOG_DIR)/frontend.log 2>&1 & echo $$! > $(FRONTEND_PID_FILE); \
-		echo "[start-frontend] PID: $$(cat $(FRONTEND_PID_FILE))"; \
-	fi
-
 stop: stop-frontend stop-agent stop-backend
-	@echo "[stop] All services stopped"
-
-stop-backend:
-	@set -e; \
-	echo "[stop-backend] Cleaning backend processes ..."; \
-	if [ -f $(BACKEND_PID_FILE) ] && kill -0 $$(cat $(BACKEND_PID_FILE)) 2>/dev/null; then \
-		echo "[stop-backend] Stopping PID $$(cat $(BACKEND_PID_FILE))"; \
-		kill $$(cat $(BACKEND_PID_FILE)); \
-		sleep 1; \
-	else \
-		echo "[stop-backend] PID file missing or stale"; \
-	fi
-	@set -e; \
-	for pid in $$(pgrep -f "uvicorn backend.main:app" || true); do \
-		if [ "$$pid" != "$$$$" ]; then kill $$pid >/dev/null 2>&1 || true; fi; \
-	done
-	@rm -f $(BACKEND_PID_FILE)
-
-stop-agent:
-	@set -e; \
-	echo "[stop-agent] Cleaning agent processes ..."; \
-	if [ -f $(AGENT_PID_FILE) ] && kill -0 $$(cat $(AGENT_PID_FILE)) 2>/dev/null; then \
-		echo "[stop-agent] Stopping PID $$(cat $(AGENT_PID_FILE))"; \
-		kill $$(cat $(AGENT_PID_FILE)); \
-		sleep 1; \
-	else \
-		echo "[stop-agent] PID file missing or stale"; \
-	fi
-	@set -e; \
-	for pid in $$(pgrep -f "uvicorn agent.main:app" || true); do \
-		if [ "$$pid" != "$$$$" ]; then kill $$pid >/dev/null 2>&1 || true; fi; \
-	done
-	@rm -f $(AGENT_PID_FILE)
-
-stop-frontend:
-	@set -e; \
-	echo "[stop-frontend] Cleaning frontend processes ..."; \
-	if [ -f $(FRONTEND_PID_FILE) ] && kill -0 $$(cat $(FRONTEND_PID_FILE)) 2>/dev/null; then \
-		echo "[stop-frontend] Stopping PID $$(cat $(FRONTEND_PID_FILE))"; \
-		kill $$(cat $(FRONTEND_PID_FILE)); \
-		sleep 1; \
-	else \
-		echo "[stop-frontend] PID file missing or stale"; \
-	fi
-	@set -e; \
-	for pid in $$(pgrep -f "vite preview --host 0.0.0.0" || true); do \
-		if [ "$$pid" != "$$$$" ]; then kill $$pid >/dev/null 2>&1 || true; fi; \
-	done; \
-	for pid in $$(pgrep -f "npm run preview -- --host 0.0.0.0" || true); do \
-		if [ "$$pid" != "$$$$" ]; then kill $$pid >/dev/null 2>&1 || true; fi; \
-	done
-	@rm -f $(FRONTEND_PID_FILE)
+	@echo "[stop] 全部服务已停止"
 
 restart: stop start
 
 status:
-	@echo "[status] backend:"; \
-	if [ -f $(BACKEND_PID_FILE) ] && kill -0 $$(cat $(BACKEND_PID_FILE)) 2>/dev/null; then echo "  running (PID $$(cat $(BACKEND_PID_FILE)))"; \
-	elif ss -ltn | awk '{print $$4}' | grep -Eq '[:.]$(BACKEND_PORT)$$'; then echo "  running (port $(BACKEND_PORT), pid file stale)"; \
-	else echo "  stopped"; fi
-	@echo "[status] agent:"; \
-	if [ -f $(AGENT_PID_FILE) ] && kill -0 $$(cat $(AGENT_PID_FILE)) 2>/dev/null; then echo "  running (PID $$(cat $(AGENT_PID_FILE)))"; \
-	elif ss -ltn | awk '{print $$4}' | grep -Eq '[:.]$(AGENT_PORT)$$'; then echo "  running (port $(AGENT_PORT), pid file stale)"; \
-	else echo "  stopped"; fi
-	@echo "[status] frontend:"; \
-	if [ -f $(FRONTEND_PID_FILE) ] && kill -0 $$(cat $(FRONTEND_PID_FILE)) 2>/dev/null; then echo "  running (PID $$(cat $(FRONTEND_PID_FILE)))"; else echo "  stopped"; fi
+	@for spec in "backend:$(RUN)/backend.pid" "agent:$(RUN)/agent.pid" "frontend:$(RUN)/frontend.pid"; do \
+		name=$${spec%%:*}; pid_file=$${spec#*:}; \
+		if [ -f $$pid_file ] && kill -0 $$(cat $$pid_file) 2>/dev/null; then \
+			echo "[$$name] 运行中 (PID $$(cat $$pid_file))"; \
+		else \
+			echo "[$$name] 已停止"; \
+		fi; \
+	done
 
 health:
-	@echo "[health] backend  http://127.0.0.1:$(BACKEND_PORT)/api/v1/health"; curl -fsS http://127.0.0.1:$(BACKEND_PORT)/api/v1/health || true
-	@echo "[health] agent    http://127.0.0.1:$(AGENT_PORT)/health"; curl -fsS http://127.0.0.1:$(AGENT_PORT)/health || true
-	@echo "[health] frontend http://127.0.0.1:$(FRONTEND_PORT)"; curl -fsS -I http://127.0.0.1:$(FRONTEND_PORT) | head -n 1 || true
+	@curl -fsS http://127.0.0.1:$(PORT_BACKEND)/api/v1/health && echo " <- backend"; \
+	curl -fsS http://127.0.0.1:$(PORT_AGENT)/health && echo " <- agent"; \
+	curl -fsSI http://127.0.0.1:$(PORT_FRONTEND) -o /dev/null && echo "frontend ok"
 
 logs:
-	@echo "Backend log : $(LOG_DIR)/backend.log"
-	@echo "Agent log   : $(LOG_DIR)/agent.log"
-	@echo "Frontend log: $(LOG_DIR)/frontend.log"
-	@echo "Use: tail -f logs/backend.log"
+	@echo "backend : $(LOG)/backend.log"
+	@echo "agent   : $(LOG)/agent.log"
+	@echo "frontend: $(LOG)/frontend.log"
 
 clean:
-	@echo "[clean] Removing runtime PID files"
-	@rm -f $(BACKEND_PID_FILE) $(AGENT_PID_FILE) $(FRONTEND_PID_FILE)
+	@rm -f $(RUN)/*.pid; \
+	echo "[clean] 已清理 PID 文件"
