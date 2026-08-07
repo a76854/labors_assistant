@@ -49,9 +49,9 @@ async function handleLogin() {
   }
 }
 
-function fillDemo(username: string) {
+function fillDemo(username: string, password = 'demo123456') {
   form.value.username = username
-  form.value.password = 'demo123456'
+  form.value.password = password
 }
 </script>
 
@@ -87,7 +87,7 @@ function fillDemo(username: string) {
       <div class="demo-accounts">
         <n-button size="small" quaternary @click="fillDemo('worker_demo')"><AppIcon name="briefcase" :size="14" /> 劳动者演示账号</n-button>
         <n-button size="small" quaternary @click="fillDemo('lawyer01')">⚖️ 律师演示账号</n-button>
-        <n-button size="small" quaternary @click="fillDemo('admin')"><AppIcon name="shield" :size="20" /> 管理员演示账号</n-button>
+        <n-button size="small" quaternary @click="fillDemo('admin', 'admin123456')"><AppIcon name="shield" :size="20" /> 管理员演示账号</n-button>
       </div>
     </div>
   </div>
