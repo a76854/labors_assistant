@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { NEmpty, NSkeleton, NTag, useMessage } from 'naive-ui'
 import { getAdminSessions } from '@/services/adminService'
 import type { AdminSession } from '@/services/adminService'
+import CaseTypeIcon from '@/components/CaseTypeIcon.vue'
 import { CASE_TYPE_MAP, formatRegion } from '@/constants'
 
 const message = useMessage()
@@ -38,7 +39,7 @@ function formatTime(value: string): string {
   <div class="sessions-page fade-in">
     <div class="sessions-header">
       <div>
-        <h2>💬 会话记录</h2>
+        <h2><AppIcon name="chat" :size="14" /> 会话记录</h2>
         <p class="sessions-sub">全平台咨询会话（共 {{ total }} 条）</p>
       </div>
     </div>
@@ -60,7 +61,7 @@ function formatTime(value: string): string {
       </div>
       <div v-for="session in sessions" :key="session.id" class="table-row">
         <span class="session-case">
-          {{ CASE_TYPE_MAP[session.case_type]?.icon || '⚖️' }}
+          <CaseTypeIcon :type="session.case_type" :size="18" />
           {{ CASE_TYPE_MAP[session.case_type]?.name || session.case_type }}
         </span>
         <span>{{ formatRegion(session.region) }}</span>

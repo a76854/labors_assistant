@@ -85,9 +85,9 @@ function fillDemo(username: string) {
         演示账号快捷填充
       </n-divider>
       <div class="demo-accounts">
-        <n-button size="small" quaternary @click="fillDemo('worker_demo')">👷 劳动者演示账号</n-button>
+        <n-button size="small" quaternary @click="fillDemo('worker_demo')"><AppIcon name="briefcase" :size="14" /> 劳动者演示账号</n-button>
         <n-button size="small" quaternary @click="fillDemo('lawyer01')">⚖️ 律师演示账号</n-button>
-        <n-button size="small" quaternary @click="fillDemo('admin')">🛡️ 管理员演示账号</n-button>
+        <n-button size="small" quaternary @click="fillDemo('admin')"><AppIcon name="shield" :size="20" /> 管理员演示账号</n-button>
       </div>
     </div>
   </div>

@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { NEmpty, NSelect, NSkeleton, NTag, useMessage } from 'naive-ui'
 import { getAdminLeads } from '@/services/adminService'
 import type { AdminLead } from '@/services/adminService'
+import CaseTypeIcon from '@/components/CaseTypeIcon.vue'
 import { CASE_TYPE_MAP, COMPLEXITY_MAP, formatRegion } from '@/constants'
 
 const message = useMessage()
@@ -46,7 +47,7 @@ function formatTime(value: string): string {
   <div class="admin-leads fade-in">
     <div class="leads-header">
       <div>
-        <h2>📥 线索管理</h2>
+        <h2><AppIcon name="file" :size="14" /> 线索管理</h2>
         <p class="leads-sub">全平台案件线索（共 {{ total }} 条）</p>
       </div>
       <n-select
@@ -77,7 +78,7 @@ function formatTime(value: string): string {
       </div>
       <div v-for="lead in leads" :key="lead.id" class="table-row">
         <span class="lead-case">
-          {{ CASE_TYPE_MAP[lead.case_type]?.icon || '⚖️' }}
+          <CaseTypeIcon :type="lead.case_type" :size="18" />
           {{ CASE_TYPE_MAP[lead.case_type]?.name || lead.case_type }}
           <n-tag v-if="lead.region" size="tiny" :bordered="false" type="info">{{ formatRegion(lead.region) }}</n-tag>
         </span>

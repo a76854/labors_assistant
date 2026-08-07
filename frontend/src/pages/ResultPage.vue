@@ -85,7 +85,7 @@ async function handleExport() {
       <div v-else-if="doc" class="result-card glass-card fade-in">
         <header class="result-header">
           <div class="result-title">
-            <span class="doc-icon">📄</span>
+            <span class="doc-icon"><AppIcon name="document" :size="14" /></span>
             <div>
               <h2>{{ doc.title || '法律文书' }}</h2>
               <n-tag :bordered="false" :type="(statusMap[doc.status]?.type as any) || 'default'" size="small">

@@ -7,30 +7,26 @@ export const CASE_TYPES = [
     key: 'wage_arrears',
     name: '劳动报酬纠纷',
     desc: '工资被拖欠、加班费、离职补偿',
-    icon: '💰',
   },
   {
     key: 'labor_contract',
     name: '劳动合同争议',
     desc: '无故辞退、合同解除、竞业限制',
-    icon: '📄',
   },
   {
     key: 'work_injury',
     name: '工伤赔偿',
     desc: '工伤认定、伤残赔偿、医疗费',
-    icon: '🏥',
   },
   {
     key: 'other',
     name: '其他法律咨询',
     desc: '社保、劳动监察等综合咨询',
-    icon: '⚖️',
   },
 ] as const
 
-export const CASE_TYPE_MAP: Record<string, { name: string; icon: string }> = Object.fromEntries(
-  CASE_TYPES.map((item) => [item.key, { name: item.name, icon: item.icon }]),
+export const CASE_TYPE_MAP: Record<string, { name: string }> = Object.fromEntries(
+  CASE_TYPES.map((item) => [item.key, { name: item.name }]),
 )
 
 export const REGION_MAP: Record<string, string> = {

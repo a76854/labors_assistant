@@ -52,7 +52,7 @@ function formatTime(value: string): string {
   <div class="users-page fade-in">
     <div class="users-header">
       <div>
-        <h2>👥 用户管理</h2>
+        <h2><AppIcon name="person-circle" :size="14" /> 用户管理</h2>
         <p class="users-sub">全平台用户（共 {{ total }} 人）</p>
       </div>
       <n-select

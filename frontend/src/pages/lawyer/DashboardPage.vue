@@ -62,7 +62,7 @@ function openDetail(id: string) {
   <div class="dashboard-page fade-in">
     <div class="dashboard-header">
       <div>
-        <h2>🎯 系统推荐线索</h2>
+        <h2><AppIcon name="locate" :size="14" /> 系统推荐线索</h2>
         <p class="dashboard-sub">根据您的擅长领域与所在地区智能匹配，优先展示高匹配度案件</p>
       </div>
       <n-button size="small" quaternary @click="loadRecommendations" :loading="loading">刷新</n-button>
@@ -103,7 +103,7 @@ function openDetail(id: string) {
             <span class="rec-icon">{{ caseIconMap[rec.lead.case_type] || '⚖️' }}</span>
             <span class="rec-case-name">{{ CASE_TYPE_MAP[rec.lead.case_type]?.name || rec.lead.case_type }}</span>
             <n-tag v-if="rec.lead.region" size="small" :bordered="false" type="info">
-              📍 {{ formatRegion(rec.lead.region) }}
+              <AppIcon name="locate" :size="14" /> {{ formatRegion(rec.lead.region) }}
             </n-tag>
             <n-tag size="small" :bordered="false" :type="rec.lead.risk_score && rec.lead.risk_score >= 70 ? 'error' : rec.lead.risk_score && rec.lead.risk_score >= 45 ? 'warning' : 'success'">
               风险 {{ rec.lead.risk_score ?? '-' }}
@@ -131,7 +131,7 @@ function openDetail(id: string) {
             :loading="claimingId === rec.lead.id"
             @click.stop="handleClaim(rec.lead.id)"
           >
-            🤝 接单
+            <AppIcon name="hand-right" :size="14" /> 接单
           </n-button>
           <n-button size="small" quaternary @click.stop="openDetail(rec.lead.id)">详情</n-button>
         </div>

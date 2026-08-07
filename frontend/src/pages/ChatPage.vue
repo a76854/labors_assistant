@@ -10,26 +10,26 @@ import {
   useMessage,
 } from 'naive-ui'
 import {
-  createSession,
-  deleteSession,
   getMessages,
   getSession,
-  listSessions,
   streamChat,
   syncMessages,
 } from '@/services/chatService'
 import { generateDocument } from '@/services/documentService'
 import { getSessionLead, triageSession } from '@/services/lawyerService'
 import type { TriageResponse, SessionLeadInfo } from '@/services/lawyerService'
-import type { SessionListItem, SessionResponse } from '@/services/chatService'
+import type { SessionResponse } from '@/services/chatService'
 import type { MessageResponse } from '@/services/chatService'
-import SessionHistoryPanel from '@/components/SessionHistoryPanel.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import CaseTypeIcon from '@/components/CaseTypeIcon.vue'
+import AppIcon from '@/components/AppIcon.vue'
 import { CASE_TYPE_MAP, CASE_TYPES, TOOL_HINTS, COMPLEXITY_MAP, LEAD_STATUS_MAP, formatRegion } from '@/constants'
+import { useHistoryStore } from '@/stores/history'
 
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
+const historyStore = useHistoryStore()
 
 const DOCUMENT_READY_SIGNAL = '请点击右上角生成诉状'
 
@@ -38,7 +38,6 @@ const caseType = computed(() => session.value?.case_type || '')
 
 const session = ref<SessionResponse | null>(null)
 const messages = ref<MessageResponse[]>([])
-const historySessions = ref<SessionListItem[]>([])
 const inputText = ref('')
 const isInitializing = ref(true)
 const isSending = ref(false)
@@ -46,7 +45,6 @@ const isTyping = ref(false)
 const currentReply = ref('')
 const toolHint = ref('')
 const isGeneratingDoc = ref(false)
-const deletingSessionId = ref<string | null>(null)
 const notFound = ref(false)
 const messagesEndRef = ref<HTMLElement | null>(null)
 
@@ -101,7 +99,8 @@ const riskColor = computed(() => {
 })
 
 onMounted(async () => {
-  await Promise.all([loadHistory(), initSession()])
+  historyStore.setActive(sessionId.value)
+  await initSession()
 })
 
 watch(messages, async () => {
@@ -114,15 +113,6 @@ watch(messages, async () => {
 async function scrollToBottom() {
   await nextTick()
   messagesEndRef.value?.scrollIntoView({ behavior: 'smooth' })
-}
-
-async function loadHistory() {
-  try {
-    const data = await listSessions(20, 0)
-    historySessions.value = data.sessions
-  } catch {
-    /* ignore */
-  }
 }
 
 async function initSession() {
@@ -234,7 +224,7 @@ async function handleSend() {
     isSending.value = false
     isTyping.value = false
     activeToolMessage.value = null
-    await loadHistory()
+    historyStore.load()
   }
 }
 
@@ -272,50 +262,10 @@ async function handleTriage() {
     triageLoading.value = false
   }
 }
-
-function handleDeleteSession(id: string) {
-  deletingSessionId.value = id
-  deleteSession(id)
-    .then(async () => {
-      message.success('会话已删除')
-      await loadHistory()
-    })
-    .catch((error) => message.error(error instanceof Error ? error.message : '删除失败'))
-    .finally(() => {
-      deletingSessionId.value = null
-    })
-}
-
-function handleSelectSession(id: string) {
-  if (id === sessionId.value) return
-  router.push(`/chat/${id}`)
-}
-
-async function handleNewSession() {
-  try {
-    const s = await createSession({ case_type: 'wage_arrears', region: 'beijing' })
-    router.push(`/chat/${s.id}`)
-  } catch (error) {
-    message.error(error instanceof Error ? error.message : '创建失败')
-  }
-}
 </script>
 
 <template>
-  <div class="chat-page page-container">
-    <aside class="side-panel glass-card">
-      <div class="panel-title">历史咨询</div>
-      <SessionHistoryPanel
-        :sessions="historySessions"
-        :loading="isInitializing"
-        :active-id="sessionId"
-        :show-new-entry="true"
-        @select="handleSelectSession"
-        @delete="handleDeleteSession"
-        @new-session="handleNewSession"
-      />
-    </aside>
-
+  <div class="chat-page page-container fade-in">
     <main class="chat-container glass-card">
       <template v-if="notFound">
         <n-empty description="会话不存在或已删除" style="margin-top: 80px">
@@ -328,10 +278,10 @@ async function handleNewSession() {
       <template v-else>
         <header class="chat-header">
           <div class="chat-title">
-            <span class="chat-case-icon">{{ CASE_TYPE_MAP[caseType]?.icon || '⚖️' }}</span>
+            <span class="chat-case-icon"><CaseTypeIcon :type="caseType" :size="18" /></span>
             <span>{{ CASE_TYPE_MAP[caseType]?.name || caseType }}</span>
             <n-tag v-if="session?.region" size="small" :bordered="false" type="info">
-              📍 {{ formatRegion(session.region) }}
+              <AppIcon name="locate" :size="14" /> {{ formatRegion(session.region) }}
             </n-tag>
           </div>
           <n-tooltip :disabled="canGenerateDoc">
@@ -342,7 +292,7 @@ async function handleNewSession() {
                 :disabled="!canGenerateDoc"
                 @click="handleGenerateDoc"
               >
-                📄 生成诉状
+                <AppIcon name="document" :size="14" /> 生成诉状
               </n-button>
             </template>
             {{ isDocumentGenerationReady ? '' : '请先与 AI 完成案情信息收集（等待提示“请点击右上角生成诉状”）' }}
@@ -413,7 +363,7 @@ async function handleNewSession() {
           <!-- 推荐律师 -->
           <div class="lawyer-section">
             <div class="lawyer-section-title">
-              <span>👨‍⚖️ 推荐律师</span>
+              <span><AppIcon name="scale" :size="16" /> 推荐律师</span>
               <n-tag v-if="leadInfo" size="small" :bordered="false" :type="(LEAD_STATUS_MAP[leadInfo.status]?.type as any) || 'default'">
                 线索已发布：{{ LEAD_STATUS_MAP[leadInfo.status]?.label }}
               </n-tag>
@@ -440,7 +390,7 @@ async function handleNewSession() {
             class="material-request-card"
           >
             <div class="mr-header">
-              <span>📎 律师发起补充材料请求</span>
+              <span><AppIcon name="attach" :size="14" /> 律师发起补充材料请求</span>
               <n-tag size="small" :bordered="false" :type="request.status === 'satisfied' ? 'success' : 'warning'">
                 {{ request.status === 'satisfied' ? '已补充' : '待补充' }}
               </n-tag>
@@ -455,7 +405,7 @@ async function handleNewSession() {
 
         <!-- 未分诊时的提示条 -->
         <div v-else-if="messages.length >= 2 && !leadLoading" class="triage-hint">
-          <span>💡 已获取初步案情，可进行案件分诊并发布给律师</span>
+          <span><AppIcon name="bulb" :size="14" /> 已获取初步案情，可进行案件分诊并发布给律师</span>
           <n-button size="small" type="primary" ghost :loading="triageLoading" @click="handleTriage">
             开始分诊
           </n-button>
@@ -464,7 +414,7 @@ async function handleNewSession() {
         <!-- 消息区 -->
         <div class="messages-area">
           <div v-if="messages.length === 0" class="empty-chat">
-            <div class="empty-icon">🤖</div>
+            <div class="empty-icon"><AppIcon name="hardware" :size="18" /></div>
             <p>您好，我是您的维权助手</p>
             <p class="empty-sub">请描述您的劳动争议情况，我会帮您分析并生成法律文书</p>
             <div class="quick-questions">
@@ -481,7 +431,10 @@ async function handleNewSession() {
           </div>
 
           <div v-for="msg in messages" :key="msg.id" class="message-row" :class="msg.role">
-            <div class="message-avatar">{{ msg.role === 'assistant' ? '⚖️' : '👤' }}</div>
+            <div class="message-avatar">
+              <CaseTypeIcon v-if="msg.role === 'assistant'" :type="caseType" :size="16" />
+              <AppIcon v-else name="person" :size="16" />
+            </div>
             <div class="message-bubble">
               <MarkdownRenderer v-if="msg.role === 'assistant'" :content="msg.content" />
               <div v-else class="user-text">{{ msg.content }}</div>
@@ -490,7 +443,7 @@ async function handleNewSession() {
 
           <!-- 打字中 -->
           <div v-if="isTyping" class="message-row assistant">
-            <div class="message-avatar">⚖️</div>
+            <div class="message-avatar"><CaseTypeIcon :type="caseType" :size="16" /></div>
             <div class="message-bubble">
               <div v-if="activeToolMessage" class="tool-hint">
                 <span>{{ activeToolMessage.icon }}</span>
@@ -535,34 +488,7 @@ async function handleNewSession() {
 
 <style scoped>
 .chat-page {
-  max-width: 1200px;
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 20px;
-}
-@media (max-width: 1024px) {
-  .chat-page {
-    grid-template-columns: 1fr;
-  }
-}
-.side-panel {
-  padding: 14px;
-  align-self: start;
-  position: sticky;
-  top: calc(var(--navbar-height) + 24px);
-  max-height: calc(100vh - var(--navbar-height) - 48px);
-  overflow-y: auto;
-}
-@media (max-width: 1024px) {
-  .side-panel {
-    position: static;
-    max-height: 280px;
-  }
-}
-.panel-title {
-  font-size: 14px;
-  font-weight: 700;
-  padding: 4px 8px 10px;
+  max-width: 1000px;
 }
 .chat-container {
   display: flex;

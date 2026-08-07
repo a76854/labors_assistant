@@ -5,6 +5,7 @@ import { NButton, NEmpty, NSkeleton, NTag, useMessage } from 'naive-ui'
 import { listMyLeads } from '@/services/lawyerService'
 import type { LeadListItem } from '@/services/lawyerService'
 import { CASE_TYPE_MAP, COMPLEXITY_MAP, formatRegion } from '@/constants'
+import CaseTypeIcon from '@/components/CaseTypeIcon.vue'
 
 const router = useRouter()
 const message = useMessage()
@@ -26,6 +27,13 @@ async function loadMyLeads() {
   }
 }
 
+function riskClass(score: number | null | undefined) {
+  if (score === null || score === undefined) return ''
+  if (score >= 70) return 'risk-high'
+  if (score >= 45) return 'risk-mid'
+  return 'risk-low'
+}
+
 function formatTime(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
@@ -40,16 +48,16 @@ function openDetail(id: string) {
 
 <template>
   <div class="my-cases fade-in">
-    <div class="my-cases-header">
+    <div class="page-header">
       <div>
-        <h2>📁 我的接单</h2>
-        <p class="my-cases-sub">我接手的案件与跟进状态</p>
+        <h2>我的接单</h2>
+        <p class="page-sub">已接手的案件与跟进状态</p>
       </div>
       <n-button size="small" quaternary @click="loadMyLeads" :loading="loading">刷新</n-button>
     </div>
 
-    <div v-if="loading" class="my-skeleton">
-      <n-skeleton v-for="i in 2" :key="i" height="100px" :sharp="false" style="margin-bottom: 12px" />
+    <div v-if="loading" class="skeleton-list">
+      <n-skeleton v-for="i in 3" :key="i" height="56px" :sharp="false" style="margin-bottom: 8px" />
     </div>
 
     <n-empty v-else-if="leads.length === 0" description="还没有接单">
@@ -60,131 +68,151 @@ function openDetail(id: string) {
       </template>
     </n-empty>
 
-    <div v-else class="case-list">
-      <div v-for="lead in leads" :key="lead.id" class="case-card glass-card" @click="openDetail(lead.id)">
-        <div class="case-icon">{{ CASE_TYPE_MAP[lead.case_type]?.icon || '⚖️' }}</div>
-        <div class="case-main">
-          <div class="case-top">
-            <span class="case-name">{{ CASE_TYPE_MAP[lead.case_type]?.name || lead.case_type }}</span>
-            <n-tag v-if="lead.region" size="small" :bordered="false" type="info">📍 {{ formatRegion(lead.region) }}</n-tag>
-            <n-tag
-              size="small"
-              :bordered="false"
-              :type="lead.status === 'claimed' ? 'success' : 'default'"
-            >
-              {{ lead.status === 'claimed' ? '跟进中' : '已完成' }}
-            </n-tag>
-            <n-tag
-              size="small"
-              :bordered="false"
-              :type="(COMPLEXITY_MAP[lead.complexity || '']?.color as any) || 'default'"
-            >
-              {{ COMPLEXITY_MAP[lead.complexity || '']?.label || lead.complexity || '-' }}
-            </n-tag>
-          </div>
-          <div class="case-summary">{{ lead.summary || '暂无摘要' }}</div>
-          <div class="case-meta">
-            <span class="case-time">接单时间 {{ formatTime(lead.updated_at) }}</span>
-            <span v-if="lead.material_request_count > 0" class="case-material">
-              📎 已发起 {{ lead.material_request_count }} 次补充材料
-            </span>
-          </div>
-        </div>
-        <div class="case-scores">
-          <span class="score-chip">风险 {{ lead.risk_score ?? '-' }}</span>
-          <span class="score-chip">证据 {{ lead.evidence_score ?? '-' }}</span>
-        </div>
+    <div v-else class="list surface-card">
+      <div class="list-head">
+        <span class="col col-case">案件</span>
+        <span class="col col-region">地区</span>
+        <span class="col col-risk">风险</span>
+        <span class="col col-evidence">证据</span>
+        <span class="col col-complexity">复杂度</span>
+        <span class="col col-status">状态</span>
+        <span class="col col-time">接单时间</span>
+      </div>
+      <div v-for="lead in leads" :key="lead.id" class="list-row" @click="openDetail(lead.id)">
+        <span class="col col-case">
+          <CaseTypeIcon :type="lead.case_type" :size="16" />
+          <span class="case-name">{{ CASE_TYPE_MAP[lead.case_type]?.name || lead.case_type }}</span>
+        </span>
+        <span class="col col-region">{{ formatRegion(lead.region) }}</span>
+        <span class="col col-risk">
+          <span class="risk-pill" :class="riskClass(lead.risk_score)">
+            {{ lead.risk_score ?? '-' }}
+          </span>
+        </span>
+        <span class="col col-evidence text-mono">{{ lead.evidence_score ?? '-' }}</span>
+        <span class="col col-complexity">
+          <n-tag
+            size="small"
+            :bordered="false"
+            :type="(COMPLEXITY_MAP[lead.complexity || '']?.color as any) || 'default'"
+          >
+            {{ COMPLEXITY_MAP[lead.complexity || '']?.label || lead.complexity || '-' }}
+          </n-tag>
+        </span>
+        <span class="col col-status">
+          <n-tag
+            size="small"
+            :bordered="false"
+            :type="lead.status === 'claimed' ? 'success' : 'default'"
+          >
+            {{ lead.status === 'claimed' ? '跟进中' : '已完成' }}
+          </n-tag>
+        </span>
+        <span class="col col-time text-tertiary">{{ formatTime(lead.updated_at) }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.my-cases-header {
+.page-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 16px;
 }
-.my-cases-header h2 {
+.page-header h2 {
   margin: 0;
   font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
-.my-cases-sub {
+.page-sub {
   margin: 4px 0 0;
   font-size: 12.5px;
   color: var(--text-secondary);
 }
-.my-skeleton {
+.skeleton-list {
   padding: 4px;
 }
-.case-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.list {
+  overflow: hidden;
+  padding: 0;
 }
-.case-card {
+.list-head,
+.list-row {
+  display: grid;
+  grid-template-columns: 1.6fr 80px 80px 80px 100px 100px 120px;
+  align-items: center;
+  padding: 12px 18px;
+  gap: 10px;
+  font-size: 13px;
+}
+.list-head {
+  background: var(--bg-subtle);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid var(--border-color);
+}
+.list-row {
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--transition-fast);
+}
+.list-row:last-child {
+  border-bottom: none;
+}
+.list-row:hover {
+  background: var(--bg-subtle);
+}
+.col {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.case-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(59, 130, 246, 0.4);
-}
-.case-icon {
-  font-size: 26px;
-  flex-shrink: 0;
-}
-.case-main {
-  flex: 1;
+  gap: 6px;
   min-width: 0;
 }
-.case-top {
+.col-case {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .case-name {
-  font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--text-primary);
 }
-.case-summary {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.case-meta {
-  margin-top: 8px;
-  display: flex;
+.risk-pill {
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-}
-.case-time {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-.case-material {
-  font-size: 11px;
-  color: #f59e0b;
-}
-.case-scores {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.score-chip {
+  justify-content: center;
+  min-width: 32px;
+  padding: 1px 8px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: rgba(128, 128, 128, 0.1);
-  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
+.risk-high {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.risk-mid {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+.risk-low {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+@media (max-width: 900px) {
+  .list-head {
+    display: none;
+  }
+  .list-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
 }
 </style>

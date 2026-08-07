@@ -16,6 +16,7 @@ import {
 } from 'naive-ui'
 import { claimLead, completeLead, getLawyerLead, requestMaterials } from '@/services/lawyerService'
 import type { LeadDetail } from '@/services/lawyerService'
+import CaseTypeIcon from '@/components/CaseTypeIcon.vue'
 import { CASE_TYPE_MAP, COMPLEXITY_MAP, LEAD_STATUS_MAP, formatRegion } from '@/constants'
 
 const route = useRoute()
@@ -135,7 +136,7 @@ const materialRequests = computed(() => lead.value?.material_requests || [])
         <div class="detail-card glass-card">
           <div class="card-header">
             <div class="case-head">
-              <span class="case-icon">{{ CASE_TYPE_MAP[lead.case_type]?.icon || '⚖️' }}</span>
+              <span class="case-icon"><CaseTypeIcon :type="lead.case_type" :size="18" /></span>
               <h2>{{ CASE_TYPE_MAP[lead.case_type]?.name || lead.case_type }}</h2>
               <n-tag :bordered="false" :type="(LEAD_STATUS_MAP[lead.status]?.type as any) || 'default'">
                 {{ LEAD_STATUS_MAP[lead.status]?.label }}
@@ -144,7 +145,7 @@ const materialRequests = computed(() => lead.value?.material_requests || [])
             <div class="case-actions">
               <n-popconfirm v-if="lead.status === 'claimed'" @positive-click="handleComplete">
                 <template #trigger>
-                  <n-button size="small" :loading="acting">✅ 标记完成</n-button>
+                  <n-button size="small" :loading="acting"><AppIcon name="check" :size="14" /> 标记完成</n-button>
                 </template>
                 确认案件已完成？
               </n-popconfirm>
@@ -155,7 +156,7 @@ const materialRequests = computed(() => lead.value?.material_requests || [])
                 :loading="acting"
                 @click="handleClaim"
               >
-                🤝 接单
+                <AppIcon name="hand-right" :size="14" /> 接单
               </n-button>
             </div>
           </div>
@@ -167,7 +168,7 @@ const materialRequests = computed(() => lead.value?.material_requests || [])
               {{ lead.user_username || '-' }}
               <span v-if="lead.user_phone" class="phone-mask">({{ lead.user_phone }})</span>
             </n-descriptions-item>
-            <n-descriptions-item label="地区">📍 {{ formatRegion(lead.region) }}</n-descriptions-item>
+            <n-descriptions-item label="地区"><AppIcon name="locate" :size="14" /> {{ formatRegion(lead.region) }}</n-descriptions-item>
           </n-descriptions>
 
           <div class="score-row">
@@ -221,7 +222,7 @@ const materialRequests = computed(() => lead.value?.material_requests || [])
 
         <!-- 对话摘要 -->
         <div class="detail-card glass-card">
-          <h3 class="card-subtitle">💬 案情对话摘要</h3>
+          <h3 class="card-subtitle"><AppIcon name="chat" :size="16" /> 案情对话摘要</h3>
           <div class="msg-summary">
             <div v-for="(msg, index) in lead.messages" :key="index" class="msg-line" :class="msg.role">
               <span class="msg-role">{{ msg.role === 'user' ? '劳动者' : 'AI助手' }}</span>
@@ -232,7 +233,7 @@ const materialRequests = computed(() => lead.value?.material_requests || [])
 
         <!-- 补充材料请求 -->
         <div class="detail-card glass-card">
-          <h3 class="card-subtitle">📎 补充材料请求</h3>
+          <h3 class="card-subtitle"><AppIcon name="attach" :size="14" /> 补充材料请求</h3>
 
           <div v-if="lead.status !== 'open'" class="request-form">
             <div class="material-grid">
@@ -250,7 +251,7 @@ const materialRequests = computed(() => lead.value?.material_requests || [])
               :disabled="lead.status !== 'claimed'"
               @click="handleRequestMaterials"
             >
-              🚀 一键发起补充材料请求
+              <AppIcon name="rocket" :size="14" /> 一键发起补充材料请求
             </n-button>
             <span v-if="lead.status !== 'claimed'" class="form-hint">
               接单后即可向劳动者发起补充材料请求

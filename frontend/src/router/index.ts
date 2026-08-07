@@ -6,8 +6,26 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: () => import('@/pages/HomePage.vue'),
+      component: () => import('@/layouts/MainLayout.vue'),
+      children: [
+        {
+          path: '',
+          name: 'home',
+          component: () => import('@/pages/HomePage.vue'),
+        },
+        {
+          path: 'chat/:sessionId',
+          name: 'chat',
+          component: () => import('@/pages/ChatPage.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
+          path: 'result/:docId',
+          name: 'result',
+          component: () => import('@/pages/ResultPage.vue'),
+          meta: { requiresAuth: true },
+        },
+      ],
     },
     {
       path: '/login',
@@ -18,18 +36,6 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: () => import('@/pages/RegisterPage.vue'),
-    },
-    {
-      path: '/chat/:sessionId',
-      name: 'chat',
-      component: () => import('@/pages/ChatPage.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/result/:docId',
-      name: 'result',
-      component: () => import('@/pages/ResultPage.vue'),
-      meta: { requiresAuth: true },
     },
     {
       path: '/lawyer',
