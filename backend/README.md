@@ -9,8 +9,21 @@ backend/
 ├── config.py              # 配置管理
 ├── api/
 │   ├── __init__.py
-│   ├── schema.py          # Pydantic 数据验证模型
 │   └── routes.py          # API 路由定义
+├── schemas/               # Pydantic 数据验证模型（按领域分包，统一经 backend.schemas 导出）
+│   ├── __init__.py
+│   ├── session.py         # 会话相关
+│   ├── message.py         # 消息/对话相关
+│   ├── case.py            # 案件要素提取
+│   ├── document.py        # 文档生成
+│   ├── template.py        # 模板
+│   ├── common.py          # 错误响应
+│   ├── search.py          # 案例/法条搜索
+│   ├── auth.py            # 用户认证
+│   ├── triage.py          # 案件分诊
+│   ├── lawyer.py          # 律师后台与推荐
+│   ├── admin.py           # 超级管理员
+│   └── region.py          # 地区
 ├── db/
 │   ├── __init__.py
 │   ├── database.py        # 数据库连接和会话管理
@@ -124,7 +137,7 @@ def my_endpoint(session_id: str, db: Session = Depends(get_db)):
 ### 2. 添加新的数据模型
 
 a) 在 `backend/db/models.py` 中添加 SQLAlchemy 模型
-b) 在 `backend/api/schema.py` 中添加 Pydantic schema
+b) 在 `backend/schemas/` 下对应领域的模块中添加 Pydantic schema（并经 `backend/schemas/__init__.py` 导出）
 c) 在 `backend/services/` 中添加相应的服务方法
 
 ### 3. 运行数据库迁移（如果修改了表结构）

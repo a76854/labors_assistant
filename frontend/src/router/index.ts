@@ -11,18 +11,18 @@ const router = createRouter({
         {
           path: '',
           name: 'home',
-          component: () => import('@/pages/HomePage.vue'),
+          component: () => import('@/pages/user/HomePage.vue'),
         },
         {
           path: 'chat/:sessionId',
           name: 'chat',
-          component: () => import('@/pages/ChatPage.vue'),
+          component: () => import('@/pages/user/ChatPage.vue'),
           meta: { requiresAuth: true },
         },
         {
           path: 'result/:docId',
           name: 'result',
-          component: () => import('@/pages/ResultPage.vue'),
+          component: () => import('@/pages/user/ResultPage.vue'),
           meta: { requiresAuth: true },
         },
       ],

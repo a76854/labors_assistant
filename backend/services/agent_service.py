@@ -4,7 +4,7 @@ Agent 服务 - 与 LangGraph 法律 Agent 交互
 """
 
 import re
-from agent.workflow import run_agent_for_backend
+from agent.graph.workflow import run_agent_for_backend
 from typing import Optional, Dict, Any, List
 from agent.tools.doc_generator import generate_legal_doc_tool
 

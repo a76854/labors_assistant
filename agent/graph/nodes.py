@@ -2,21 +2,12 @@ import os
 import re
 from typing import Dict, Optional
 
-from agent.state import AgentState
-from agent.prompts import SYSTEM_PROMPT
-from agent.tools.legal_search import (
-    search_public_laws_tool,
-    search_public_cases_tool,
-    search_private_knowledge_tool,
-)
-from agent.tools.doc_generator import generate_legal_doc_tool
-from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 
-
-load_dotenv()
+from agent.models.llm import llm_with_tools
+from agent.models.state import AgentState
+from agent.prompts import SYSTEM_PROMPT
 
 
 DEBUG_THINKING = os.getenv("DEBUG_THINKING", "false").strip().lower() in {
@@ -86,30 +77,6 @@ def _build_whiteboard(state: AgentState) -> Dict[str, str]:
         whiteboard.update(updates)
 
     return whiteboard
-
-
-tools_list = [
-    search_public_laws_tool,
-    search_public_cases_tool,
-    search_private_knowledge_tool,
-    generate_legal_doc_tool,
-]
-
-
-llm_api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
-llm_base_url = os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
-llm_model = os.getenv("LLM_MODEL", "qwen-plus")
-
-llm_init_kwargs = {
-    "model": llm_model,
-    "temperature": 0.1,
-    "api_key": llm_api_key,
-}
-if llm_base_url:
-    llm_init_kwargs["base_url"] = llm_base_url
-
-llm = ChatOpenAI(**llm_init_kwargs)
-llm_with_tools = llm.bind_tools(tools_list)
 
 
 def call_agent(state: AgentState, config: Optional[RunnableConfig] = None) -> dict:

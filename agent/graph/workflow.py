@@ -8,8 +8,9 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from agent.agent_node import call_agent, tools_list
-from agent.state import AgentState
+from agent.graph.nodes import call_agent
+from agent.tools import tools_list
+from agent.models.state import AgentState
 
 
 DEBUG_THINKING = os.getenv("DEBUG_THINKING", "false").strip().lower() in {

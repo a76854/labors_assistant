@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from backend.db.database import get_db
 from backend.db.models import Message
-from backend.api.schema import (
+from backend.schemas import (
     SessionCreateRequest, SessionResponse, SessionListResponse, DocumentReadinessResponse,
     MessageCreateRequest, MessageSyncRequest, MessageResponse, ChatHistoryResponse,
     DocumentGenerateRequest, DocumentResponse,
