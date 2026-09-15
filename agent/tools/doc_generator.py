@@ -7,7 +7,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Cm, Pt
 from langchain_core.tools import tool
 
-from agent.state import LawsuitElementsSchema
+from agent.models.state import LawsuitElementsSchema
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

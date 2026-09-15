@@ -5,7 +5,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.api.schema import (
+from backend.schemas import (
     LeadActionResponse,
     LeadDetailResponse,
     LeadListResponse,

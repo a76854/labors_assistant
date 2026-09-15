@@ -68,13 +68,13 @@
 
 ### 4.1 交互式测试（推荐）
 
-    python -m agent.workflow
+    python -m agent.graph.workflow
 
 启动后可在终端持续输入案情，按 Ctrl+C 退出。
 
 ### 4.2 程序化单次测试
 
-    python -c "from agent.workflow import execute_legal_query; r=execute_legal_query('你的测试请求', max_iterations=30); print(r)"
+    python -c "from agent.graph.workflow import execute_legal_query; r=execute_legal_query('你的测试请求', max_iterations=30); print(r)"
 
 ---
 
@@ -169,12 +169,12 @@
 - 建议把 .env 仅保留在本地，并维护 .env.example 作为团队模板。
 - 每次提交前运行：
 
-  python -m py_compile agent/__init__.py agent/agent_node.py agent/prompts.py agent/state.py agent/workflow.py agent/tools/__init__.py agent/tools/calculator.py agent/tools/doc_generator.py agent/tools/legal_search.py
+  python -m py_compile agent/__init__.py agent/main.py agent/graph/__init__.py agent/graph/nodes.py agent/graph/workflow.py agent/models/__init__.py agent/models/state.py agent/models/llm.py agent/prompts/__init__.py agent/prompts/system.py agent/tools/__init__.py agent/tools/calculator.py agent/tools/doc_generator.py agent/tools/legal_search.py
 
 ---
 
 ## 9. 快速验收命令（复制即用）
 
-    python -c "from agent.workflow import execute_legal_query; q='原告：张三，身份证号110101199001011234，手机号13800138000，住深圳市南山区科技园科苑路15号。被告：李四，身份证号110101198501015678，手机号13900139000，住深圳市福田区福华路88号。核心诉求：请求返还借款本金80000元并支付逾期利息。涉案金额：80000元。补充事实：2025年6月1日转账借款，约定2025年9月1日前还款，现逾期未还；有借条、转账记录、催款聊天记录。请完成检索、输出评估并生成文书。'; r=execute_legal_query(q, max_iterations=30); print('TOOLS_USED=', r.get('tools_used')); print('GENERATED_DOCUMENT=', r.get('generated_document'))"
+    python -c "from agent.graph.workflow import execute_legal_query; q='原告：张三，身份证号110101199001011234，手机号13800138000，住深圳市南山区科技园科苑路15号。被告：李四，身份证号110101198501015678，手机号13900139000，住深圳市福田区福华路88号。核心诉求：请求返还借款本金80000元并支付逾期利息。涉案金额：80000元。补充事实：2025年6月1日转账借款，约定2025年9月1日前还款，现逾期未还；有借条、转账记录、催款聊天记录。请完成检索、输出评估并生成文书。'; r=execute_legal_query(q, max_iterations=30); print('TOOLS_USED=', r.get('tools_used')); print('GENERATED_DOCUMENT=', r.get('generated_document'))"
 
 若输出中包含 generate_legal_doc_tool 且 GENERATED_DOCUMENT 非空，即通过。

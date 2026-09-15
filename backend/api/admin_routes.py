@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.api.schema import (
+from backend.schemas import (
     AdminLeadListResponse,
     AdminSessionListResponse,
     AdminStatsResponse,

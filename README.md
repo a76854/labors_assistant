@@ -178,9 +178,10 @@ labors_assistant/
 │   └── tools/doc_generator.py, legal_search.py
 │
 ├── frontend/                # Vue3 前端 (Vite + Naive UI + Pinia)
-│   ├── src/pages/HomePage.vue, ChatPage.vue, ResultPage.vue
 │   ├── src/pages/LoginPage.vue, RegisterPage.vue
-│   ├── src/pages/lawyer/LeadsPage.vue, LeadDetailPage.vue
+│   ├── src/pages/user/HomePage.vue, ChatPage.vue, ResultPage.vue
+│   ├── src/pages/lawyer/DashboardPage.vue, MarketPage.vue, MyCasesPage.vue, LeadDetailPage.vue
+│   ├── src/pages/admin/OverviewPage.vue, UsersPage.vue, LeadsPage.vue, SessionsPage.vue
 │   ├── src/layouts/MainLayout.vue, LawyerLayout.vue
 │   ├── src/services/*.ts, src/stores/*.ts
 │   └── package.json
